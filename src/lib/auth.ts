@@ -19,14 +19,14 @@ export const { handlers: { GET, POST }, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: Record<string, unknown>; user: { role?: string; name?: string | null } }) {
       if (user) {
-        token.role = (user as { role: string }).role;
+        token.role = user.role;
         token.name = user.name || "";
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: { user?: { role?: string } }; token: Record<string, unknown> }) {
       if (session.user) {
         session.user.role = token.role as string;
       }

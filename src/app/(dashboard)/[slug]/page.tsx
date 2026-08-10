@@ -20,12 +20,14 @@ export default async function ModulePage({
   const { slug } = await params;
   const info = APP_PAGES[slug] || { label: slug, color: "gray" };
 
-  let data: { id: string; [key: string]: unknown }[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let data: Record<string, any>[] = [];
   try {
     const models: Record<string, string> = { enquiries: "enquiry", quotations: "quotation", invoices: "invoice", suppliers: "supplierOrder", expenses: "expense", cashbook: "cashBookEntry", installations: "installation", amc: "amcContract", employees: "employee" };
     const model = models[slug];
     if (model) {
-      data = await (prisma as Record<string, { findMany: (opts?: Record<string, unknown>) => Promise<unknown[]> }>)[model].findMany({ orderBy: { createdAt: "desc" }, take: 20 }) as { id: string; [key: string]: unknown }[];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data = await (prisma as any)[model].findMany({ orderBy: { createdAt: "desc" }, take: 20 });
     }
   } catch {
     data = [];
@@ -44,7 +46,7 @@ export default async function ModulePage({
           {data.length === 0 ? (
             <div className="text-center py-16 text-sm text-[#787468]">
               <h3 className="font-serif text-lg text-[#504d44] mb-2">No records yet</h3>
-              <p>Click "+ Add New" to create the first entry.</p>
+              <p>Click &quot;+ Add New&quot; to create the first entry.</p>
             </div>
           ) : (
             <table className="w-full text-sm">

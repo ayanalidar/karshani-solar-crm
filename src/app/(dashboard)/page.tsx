@@ -16,7 +16,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <div className="grid grid-cols-4 gap-4 mb-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
+      <div className="grid gap-4 mb-6 grid-cols-4 max-lg:grid-cols-2 max-sm:grid-cols-1">
         <KPICard label="Revenue This Month" value={`₹${revenue.toLocaleString("en-IN")}`} delta="↑ 18.4%" up />
         <KPICard label="Active Customers" value={customers.length.toString()} delta="↑ 12 new" up />
         <KPICard label="Pending Quotations" value={`₹${pendingAmt.toLocaleString("en-IN")}`} delta="← 3 waiting" />
@@ -28,7 +28,7 @@ export default async function DashboardPage() {
         <a href="/invoices" className="text-xs font-semibold bg-white border border-amber-200 px-3 py-1 rounded">View All</a>
       </div>
 
-      <div className="grid grid-cols-[2fr_1fr] gap-4 max-lg:grid-cols-1">
+      <div className="grid gap-4 grid-cols-[2fr_1fr] max-lg:grid-cols-1">
         <div className="bg-white border border-[#e6e0d4] rounded-xl p-5">
           <h3 className="text-sm font-semibold mb-4">Monthly Sales · Aug 2026</h3>
           <div className="h-52">
