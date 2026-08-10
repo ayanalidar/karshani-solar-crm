@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL || "postgresql://localhost:5432/postgres" });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   // Seed admin user
