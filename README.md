@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KARSHANI ENTERPRISES — Solar CMS
 
-## Getting Started
+## Deploy to GitLab + Cloudflare Pages
 
-First, run the development server:
+### Step 1: Push to GitLab
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Create repo at https://gitlab.com/projects/new (name: karshani-enterprises-solar-cms)
+# Then push:
+cd karshani-crm
+git remote add gitlab https://gitlab.com/YOUR_USERNAME/karshani-enterprises-solar-cms.git
+git push gitlab main
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Step 2: Supabase Database (required)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Go to https://supabase.com → New Project (free tier)
+2. After creation: Settings → Database → Connection String → **URI**
+3. Copy the PostgreSQL URI (looks like `postgresql://postgres:...@db.xxx.supabase.co:5432/postgres`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Step 3: Cloudflare Pages
 
-## Learn More
+1. Go to https://dash.cloudflare.com → Workers & Pages → Create → Pages
+2. Connect to GitLab → select the repo
+3. Build settings:
+   - **Framework preset:** Next.js
+   - **Build command:** `npx prisma generate && next build`
+   - **Output directory:** `.next`
+4. Environment variables:
+   - `DATABASE_URL` = your Supabase PostgreSQL URI
+   - `AUTH_SECRET` = any random string (32+ chars)
+   - `NODE_VERSION` = `22`
+5. Deploy
 
-To learn more about Next.js, take a look at the following resources:
+### Step 4: Seed the database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+After deployment, run locally:
+```bash
+npm run db:push   # Creates all tables
+npm run db:seed   # Inserts products, customers, admin user
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Or run the SQL directly in Supabase SQL Editor (use `supabase-schema.sql` from the repo root).
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Local Development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm install
+cp .env.example .env    # Edit with your Supabase URL + AUTH_SECRET
+npx prisma generate
+npm run db:setup         # Create tables + seed
+npm run dev              # http://localhost:3000
+```
+
+Login: PIN `0000`
