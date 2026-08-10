@@ -9,11 +9,19 @@ export const { handlers: { GET, POST }, signIn, signOut, auth } = NextAuth({
       credentials: { pin: { label: "PIN", type: "password" } },
       async authorize(credentials) {
         if (!credentials?.pin) return null;
-        const user = await prisma.user.findFirst({
-          where: { pin: credentials.pin as string },
-        });
-        if (!user) return null;
-        return { id: user.id, name: user.name, role: user.role };
+        try {
+          const user = await prisma.user.findFirst({
+            where: { pin: credentials.pin as string },
+          });
+          if (user) return { id: user.id, name: user.name, role: user.role };
+        } catch {
+          // Database not connected — dev fallback
+          if (process.env.NODE_ENV !== "production" && credentials.pin === "0000") {
+            console.warn("⚠ Using dev fallback auth (no database). Set DATABASE_URL to connect.");
+            return { id: "dev", name: "Admin (Dev)", role: "admin" };
+          }
+        }
+        return null;
       },
     }),
   ],
