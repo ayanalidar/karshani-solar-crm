@@ -4,3 +4,8 @@ node_modules/
 .env.local
 
 .vercel
+
+# OpenNext / Cloudflare
+.wrangler/
+.open-next/
+.dev.vars

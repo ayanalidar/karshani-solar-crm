@@ -39,7 +39,7 @@ export default async function DashboardPage() {
                   <stop offset="100%" stopColor="#d97706" stopOpacity="0.02" />
                 </linearGradient>
               </defs>
-              <path d="M50,165L110,140L170,118L230,95L290,72L350,55L410,65L470,42L530,30L570,20" fill="url(#ag)" stroke="#d97706" strokeWidth="2.2" fill="none" />
+              <path d="M50,165L110,140L170,118L230,95L290,72L350,55L410,65L470,42L530,30L570,20" fill="url(#ag)" stroke="#d97706" strokeWidth="2.2" />
             </svg>
           </div>
         </div>
