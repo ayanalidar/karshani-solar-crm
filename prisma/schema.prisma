@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  pin       String
+  role      String   @default("staff")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  category      String
+  brand         String   @default("")
+  spec          String   @default("")
+  hsnCode       String   @default("") @map("hsn_code")
+  unitPrice     Float    @default(0) @map("unit_price")
+  gstPercentage Float    @default(5) @map("gst_percentage")
+  stockQuantity Int      @default(0) @map("stock_quantity")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("products")
+}
+
+model Customer {
+  id             String    @id @default(uuid())
+  name           String
+  phone          String    @default("")
+  city           String    @default("")
+  gstin          String    @default("")
+  totalPurchases Float     @default(0) @map("total_purchases")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  enquiries      Enquiry[]
+  quotations     Quotation[]
+  invoices       Invoice[]
+  installations  Installation[]
+
+  @@map("customers")
+}
+
+model Enquiry {
+  id                String    @id @default(uuid())
+  customerName      String    @map("customer_name")
+  phone             String    @default("")
+  source            String    @default("walk-in")
+  systemDescription String    @default("") @map("system_description")
+  estimatedAmount   Float     @default(0) @map("estimated_amount")
+  status            String    @default("new")
+  notes             String    @default("")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  customerId        String?   @map("customer_id")
+  customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@map("enquiries")
+}
+
+model Quotation {
+  id                String   @id @default(uuid())
+  estimateNo        String   @unique @map("estimate_no")
+  customerName      String   @map("customer_name")
+  customerPhone     String   @default("") @map("customer_phone")
+  customerLocation  String   @default("") @map("customer_location")
+  systemDescription String   @default("") @map("system_description")
+  subtotal          Float    @default(0)
+  gstTotal          Float    @default(0) @map("gst_total")
+  grandTotal        Float    @default(0) @map("grand_total")
+  quoteDate         String   @map("quote_date")
+  status            String   @default("sent")
+  createdAt         DateTime @default(now()) @map("created_at")
+  customerId        String?  @map("customer_id")
+  customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items             QuotationItem[]
+
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id           String    @id @default(uuid())
+  quotationId  String    @map("quotation_id")
+  itemName     String    @map("item_name")
+  hsnCode      String    @default("") @map("hsn_code")
+  quantity     Int       @default(1)
+  unitPrice    Float     @default(0) @map("unit_price")
+  gstPercentage Float    @default(5) @map("gst_percentage")
+  amount       Float     @default(0)
+  quotation    Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@map("quotation_items")
+}
+
+model Invoice {
+  id           String   @id @default(uuid())
+  invoiceNo    String   @unique @map("invoice_no")
+  customerName String   @map("customer_name")
+  description  String   @default("")
+  subtotal     Float    @default(0)
+  gstTotal     Float    @default(0) @map("gst_total")
+  grandTotal   Float    @default(0) @map("grand_total")
+  invoiceDate  String   @map("invoice_date")
+  dueDate      String   @default("") @map("due_date")
+  status       String   @default("due")
+  createdAt    DateTime @default(now()) @map("created_at")
+  customerId   String?  @map("customer_id")
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@map("invoices")
+}
+
+model Installation {
+  id                String    @id @default(uuid())
+  customerName      String    @map("customer_name")
+  systemDescription String    @default("") @map("system_description")
+  installDate       String    @default("") @map("install_date")
+  stage             String    @default("scheduled")
+  team              String    @default("")
+  notes             String    @default("")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  customerId        String?   @map("customer_id")
+  customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@map("installations")
+}
+
+model SupplierOrder {
+  id          String   @id @default(uuid())
+  poNumber    String   @map("po_number")
+  supplierName String  @map("supplier_name")
+  items       String
+  amount      Float    @default(0)
+  orderDate   String   @map("order_date")
+  status      String   @default("pending")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("supplier_orders")
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  category    String
+  description String   @default("")
+  amount      Float    @default(0)
+  expenseDate String   @map("expense_date")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("expenses")
+}
+
+model CashBookEntry {
+  id          String   @id @default(uuid())
+  type        String
+  description String   @default("")
+  amount      Float    @default(0)
+  entryDate   String   @map("entry_date")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("cash_book")
+}
+
+model AmcContract {
+  id          String   @id @default(uuid())
+  customerName String  @map("customer_name")
+  system      String   @default("")
+  contractType String  @default("AMC") @map("contract_type")
+  startDate   String   @map("start_date")
+  expiryDate  String   @map("expiry_date")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("amc_contracts")
+}
+
+model Employee {
+  id        String   @id @default(uuid())
+  name      String
+  role      String   @default("")
+  phone     String   @default("")
+  salary    Float    @default(0)
+  joinDate  String   @map("join_date")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("employees")
+}
