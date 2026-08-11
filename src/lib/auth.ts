@@ -27,8 +27,8 @@ export const { handlers: { GET, POST }, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        (token as Record<string, unknown>).role = user.role;
-        (token as Record<string, unknown>).name = user.name || "";
+        (token as Record<string, unknown>).role = (user as { role?: string }).role;
+        (token as Record<string, unknown>).name = (user as { name?: string | null }).name || "";
       }
       return token;
     },
