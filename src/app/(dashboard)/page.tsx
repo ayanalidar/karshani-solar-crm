@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const [products, customers, enquiries, quotations, invoices] = await Promise.all([
     prisma.product.findMany(),

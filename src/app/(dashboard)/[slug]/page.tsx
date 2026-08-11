@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 const APP_PAGES: Record<string, { label: string; color: string }> = {
   enquiries: { label: "Enquiries", color: "blue" },
   quotations: { label: "Quotations", color: "amber" },
