@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 type NavItem = {
   href?: string;
@@ -33,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/amc", label: "AMC & Warranty", icon: "🛡️", badgeKey: "amcExpiring" },
   { type: "group", label: "People" },
   { href: "/employees", label: "Employees", icon: "🧑‍💼" },
+  { href: "/users", label: "Users", icon: "🔑" },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -67,11 +69,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#faf6f0] max-w-[100vw] overflow-x-hidden">
+    <div className="flex min-h-screen bg-[#faf6f0] w-full overflow-x-hidden">
       {/* Sidebar */}
       <aside
         className={`w-60 bg-[#f5efe5] border-r border-[#e6e0d4] flex flex-col shrink-0
-          max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:transition-transform
+          max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:transition-transform max-lg:shadow-2xl
           ${mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full"}`}
       >
         <div className="p-5 border-b border-[#e6e0d4]">
@@ -90,6 +92,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href || "/"}
                 onClick={() => setMobileOpen(false)}
+                prefetch
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   pathname === item.href
                     ? "bg-amber-50 text-amber-700"
@@ -129,7 +132,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex flex-col">
+        <InstallPrompt />
         <header className="sticky top-0 z-10 bg-[#faf6f0] border-b border-[#e6e0d4] px-8 py-4 flex items-center justify-between gap-4 max-lg:px-4">
           <div className="flex items-center gap-4">
             <button
@@ -143,7 +147,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </h1>
           </div>
         </header>
-        <main className="p-8 max-lg:p-4">{children}</main>
+        <main className="p-8 max-lg:p-4 flex-1">{children}</main>
       </div>
     </div>
   );

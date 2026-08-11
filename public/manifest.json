@@ -1,0 +1,64 @@
+{
+  "name": "Karshani Solar CRM",
+  "short_name": "Karshani CRM",
+  "description": "Solar equipment management — inventory, billing, quotations, invoices, customers, installations, AMC.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#faf6f0",
+  "theme_color": "#d97706",
+  "categories": ["business", "productivity", "finance"],
+  "icons": [
+    {
+      "src": "/logo.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Sale (POS)",
+      "short_name": "Billing",
+      "url": "/billing",
+      "icons": [{ "src": "/logo.jpeg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Inventory",
+      "short_name": "Inventory",
+      "url": "/inventory",
+      "icons": [{ "src": "/logo.jpeg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Customers",
+      "short_name": "Customers",
+      "url": "/customers",
+      "icons": [{ "src": "/logo.jpeg", "sizes": "192x192" }]
+    },
+    {
+      "name": "New Quotation",
+      "short_name": "Quote",
+      "url": "/quotations/new",
+      "icons": [{ "src": "/logo.jpeg", "sizes": "192x192" }]
+    }
+  ]
+}

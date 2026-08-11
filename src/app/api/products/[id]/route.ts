@@ -7,6 +7,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (unauth) return unauth;
   const { id } = await params;
   const data = await request.json();
+
   const product = await prisma.product.update({
     where: { id },
     data: {
@@ -20,6 +21,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       ...(data.stockQuantity !== undefined && { stockQuantity: Number(data.stockQuantity) }),
     },
   });
+
+  if (!product) {
+    return NextResponse.json(
+      { error: "Failed to update product. Check DATABASE_URL on Vercel." },
+      { status: 500 }
+    );
+  }
   return NextResponse.json(product);
 }
 

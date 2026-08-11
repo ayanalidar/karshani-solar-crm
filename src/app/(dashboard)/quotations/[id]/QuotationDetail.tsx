@@ -152,7 +152,7 @@ export function QuotationDetail({ quotation, baseUrl }: { quotation: Quotation; 
       )}
 
       <div className="grid gap-4 grid-cols-[2fr_1fr] max-lg:grid-cols-1">
-        <div className="bg-white border border-[#e6e0d4] rounded-xl p-5">
+        <div className="bg-white border border-[#e6e0d4] rounded-xl p-5 min-w-0 overflow-x-auto">
           <h3 className="text-sm font-semibold mb-3">Items</h3>
           <table className="w-full text-sm">
             <thead>

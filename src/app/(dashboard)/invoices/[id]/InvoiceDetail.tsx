@@ -110,7 +110,7 @@ export function InvoiceDetail({ invoice, baseUrl }: { invoice: Invoice; baseUrl:
       </div>
 
       <div className="grid gap-4 grid-cols-[2fr_1fr] max-lg:grid-cols-1">
-        <div className="bg-white border border-[#e6e0d4] rounded-xl p-5">
+        <div className="bg-white border border-[#e6e0d4] rounded-xl p-5 min-w-0 overflow-x-auto">
           <h3 className="text-sm font-semibold mb-3">Items</h3>
           {invoice.items.length === 0 ? (
             <p className="text-sm text-[#787468] py-4 text-center">

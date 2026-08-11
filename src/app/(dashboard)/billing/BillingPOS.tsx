@@ -150,7 +150,7 @@ export function BillingPOS({ products, customers }: { products: Product[]; custo
       )}
 
       <div className="grid grid-cols-[1fr_360px] gap-5 max-xl:grid-cols-1 items-start">
-        <div>
+        <div className="min-w-0">
           <input
             type="search"
             placeholder="Search products by name, category, brand…"

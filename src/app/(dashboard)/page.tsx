@@ -108,7 +108,7 @@ export default async function DashboardPage() {
 
       {/* Chart + Recent Enquiries */}
       <div className="grid gap-4 grid-cols-[2fr_1fr] max-lg:grid-cols-1 mb-4">
-        <div className="bg-white border border-[#e6e0d4] rounded-xl p-5">
+        <div className="bg-white border border-[#e6e0d4] rounded-xl p-5 min-w-0">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-semibold">Revenue · Last 6 months (paid invoices)</h3>
             <span className="text-[11px] text-[#787468]">Total: {formatINR(months.reduce((s, m) => s + m.value, 0))}</span>
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white border border-[#e6e0d4] rounded-xl p-5">
+        <div className="bg-white border border-[#e6e0d4] rounded-xl p-5 min-w-0 overflow-x-auto">
           <h3 className="text-sm font-semibold mb-4">Recent Enquiries</h3>
           <table className="w-full text-sm">
             <thead>
@@ -258,7 +258,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Recent Invoices */}
-      <div className="bg-white border border-[#e6e0d4] rounded-xl p-5">
+      <div className="bg-white border border-[#e6e0d4] rounded-xl p-5 overflow-x-auto">
         <h3 className="text-sm font-semibold mb-3">Recent Invoices</h3>
         <table className="w-full text-sm">
           <thead>
