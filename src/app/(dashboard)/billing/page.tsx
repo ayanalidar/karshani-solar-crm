@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 const pages = ["billing", "enquiries", "quotations", "invoices", "suppliers", "expenses", "cashbook", "installations", "amc", "employees"];
 
 export default async function BillingPage() {
