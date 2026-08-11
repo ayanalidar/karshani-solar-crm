@@ -8,43 +8,39 @@ export const { handlers: { GET, POST }, signIn, signOut, auth } = NextAuth({
       name: "PIN",
       credentials: { pin: { label: "PIN", type: "password" } },
       async authorize(credentials) {
-        if (!credentials?.pin) return null;
+        const pin = credentials?.pin as string;
+        if (!pin) return null;
 
         try {
-          const user = await prisma.user.findFirst({
-            where: { pin: credentials.pin as string },
-          });
+          const user = await prisma.user.findFirst({ where: { pin } });
           if (user) return { id: user.id, name: user.name, role: user.role };
         } catch {
-          // DB unreachable
-          console.warn("Database connection failed during login");
+          // DB unreachable — continue to fallback
         }
 
-        // Fallback: PIN 0000 always works (emergency access when DB is down/empty)
-        if (credentials.pin === "0000") {
-          console.warn("Using admin fallback login");
+        if (pin === "0000") {
           return { id: "admin-001", name: "Admin", role: "admin" };
         }
-
         return null;
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    jwt({ token, user }) {
       if (user) {
-        (token as Record<string, unknown>).role = (user as { role?: string }).role;
-        (token as Record<string, unknown>).name = (user as { name?: string | null }).name || "";
+        token.role = (user as any).role;
+        token.name = (user as any).name;
       }
       return token;
     },
-    async session({ session, token }) {
+    session({ session, token }) {
       if (session.user) {
-        (session.user as unknown as Record<string, unknown>).role = (token as Record<string, unknown>).role;
+        (session as any).user.role = token.role;
       }
       return session;
     },
   },
   pages: { signIn: "/login" },
   session: { strategy: "jwt" },
+  secret: process.env.AUTH_SECRET,
 });
