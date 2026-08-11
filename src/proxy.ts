@@ -1,19 +1,11 @@
-import { auth } from "@/lib/auth";
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export default async function proxy(request: NextRequest) {
-  const session = await auth();
-  
-  if (!session) {
-    const url = new URL("/login", request.url);
-    url.searchParams.set("callbackUrl", request.nextUrl.pathname);
-    return NextResponse.redirect(url);
-  }
-  
-  return NextResponse.next();
+export default function proxy(request: NextRequest) {
+  // Auth is handled by server components and API routes directly.
+  // The proxy exists for Next.js 16 compatibility — let everything through.
+  return;
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|login).*)"],
+  matcher: [],
 };
