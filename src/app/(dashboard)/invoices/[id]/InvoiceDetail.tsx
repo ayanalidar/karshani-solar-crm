@@ -42,6 +42,11 @@ export function InvoiceDetail({ invoice, baseUrl }: { invoice: Invoice; baseUrl:
   const waNumber = invoice.customerName?.replace(/[^0-9]/g, "");
   const waLink = `https://wa.me/?text=${encodeURIComponent(waText)}`;
 
+  // Email integration
+  const emailSubject = `Invoice ${invoice.invoiceNo} from Karshani Enterprises — ${formatINR(invoice.grandTotal)}`;
+  const emailBody = `Hello ${invoice.customerName},\n\nPlease find your invoice below:\n\nInvoice No: ${invoice.invoiceNo}\nDate: ${formatDate(invoice.invoiceDate)}\nAmount: ${formatINR(invoice.grandTotal)}\nStatus: ${invoice.status.toUpperCase()}\n\nView online: ${shareUrl}\n\n— Karshani Enterprises\nPhone: 9720669669\nEmail: enterpriseskarshani@gmail.com`;
+  const emailLink = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+
   const updateStatus = async () => {
     await fetch(`/api/invoices/${invoice.id}`, {
       method: "PATCH",
@@ -79,6 +84,12 @@ export function InvoiceDetail({ invoice, baseUrl }: { invoice: Invoice; baseUrl:
             className="bg-green-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-green-700 flex items-center gap-1.5"
           >
             <span>💬</span> WhatsApp
+          </a>
+          <a
+            href={emailLink}
+            className="bg-white border border-[#e6e0d4] text-[#1c1915] px-3 py-2 rounded-md text-sm font-semibold hover:bg-[#faf6f0] flex items-center gap-1.5"
+          >
+            <span>✉️</span> Email
           </a>
           <Link
             href={`/invoices/${invoice.id}/pdf`}

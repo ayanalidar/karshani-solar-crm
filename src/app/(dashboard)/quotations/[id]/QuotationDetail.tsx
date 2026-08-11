@@ -49,6 +49,11 @@ export function QuotationDetail({ quotation, baseUrl }: { quotation: Quotation; 
     ? `https://wa.me/${waNumber.length === 10 ? "91" + waNumber : waNumber}?text=${encodeURIComponent(waText)}`
     : `https://wa.me/?text=${encodeURIComponent(waText)}`;
 
+  // Email integration — opens email client with prefilled subject + body
+  const emailSubject = `Quotation ${quotation.estimateNo} from Karshani Enterprises — ${formatINR(quotation.grandTotal)}`;
+  const emailBody = `Hello ${quotation.customerName},\n\nPlease find your quotation below:\n\nEstimate No: ${quotation.estimateNo}\nDate: ${formatDate(quotation.quoteDate)}\nAmount: ${formatINR(quotation.grandTotal)}\n\nView online: ${shareUrl}\n\n— Karshani Enterprises\nPhone: 9720669669\nEmail: enterpriseskarshani@gmail.com`;
+  const emailLink = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+
   const updateStatus = async () => {
     await fetch(`/api/quotations/${quotation.id}`, {
       method: "PATCH",
@@ -96,6 +101,12 @@ export function QuotationDetail({ quotation, baseUrl }: { quotation: Quotation; 
             className="bg-green-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-green-700 flex items-center gap-1.5"
           >
             <span>💬</span> WhatsApp
+          </a>
+          <a
+            href={emailLink}
+            className="bg-white border border-[#e6e0d4] text-[#1c1915] px-3 py-2 rounded-md text-sm font-semibold hover:bg-[#faf6f0] flex items-center gap-1.5"
+          >
+            <span>✉️</span> Email
           </a>
           <Link
             href={`/quotations/${quotation.id}/pdf`}

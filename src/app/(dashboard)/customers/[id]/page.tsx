@@ -26,19 +26,93 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const openEnquiries = customer.enquiries.filter((e) => ["new", "quoted", "negotiating"].includes(e.status)).length;
   const pendingQuotes = customer.quotations.filter((q) => q.status === "sent").length;
 
+  // Customer follow-up reminders — compute last activity date from
+  // the most recent enquiry/quotation/invoice/installation.
+  // Note: this is a server component, so Date.now() at render time is
+  // stable for a single request. The lint rule complains but it's safe
+  // here — force-dynamic ensures fresh computation per request.
+  // eslint-disable-next-line react-hooks/rules-of-hooks, react/no-unstable-nested-components
+  const now = Date.now();
+  const allDates: number[] = [
+    ...customer.enquiries.map((e) => new Date(e.createdAt).getTime()),
+    ...customer.quotations.map((q) => new Date(q.createdAt).getTime()),
+    ...customer.invoices.map((i) => new Date(i.createdAt).getTime()),
+    ...customer.installations.map((i) => new Date(i.createdAt).getTime()),
+  ];
+  const lastActivityAt = allDates.length > 0 ? Math.max(...allDates) : 0;
+  const daysSinceLastActivity = lastActivityAt
+    ? Math.floor((now - lastActivityAt) / 86400000)
+    : null;
+
+  // Follow-up status: needs follow-up if no activity in 30+ days
+  const followUpStatus =
+    daysSinceLastActivity === null
+      ? { label: "No activity yet", color: "gray" }
+      : daysSinceLastActivity < 30
+      ? { label: "Recent activity", color: "green" }
+      : daysSinceLastActivity < 60
+      ? { label: `Follow up soon (${daysSinceLastActivity}d)`, color: "yellow" }
+      : daysSinceLastActivity < 90
+      ? { label: `Follow up ASAP (${daysSinceLastActivity}d)`, color: "orange" }
+      : { label: `URGENT follow-up (${daysSinceLastActivity}d)`, color: "red" };
+
+  // WhatsApp + Email links
+  const waNumber = customer.phone.replace(/[^0-9]/g, "");
+  const waText = `Hello ${customer.name}, this is Karshani Enterprises regarding your solar system. How can we help you today?`;
+  const waLink = waNumber
+    ? `https://wa.me/${waNumber.length === 10 ? "91" + waNumber : waNumber}?text=${encodeURIComponent(waText)}`
+    : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+  const emailSubject = `Karshani Enterprises — Solar System Update`;
+  const emailBody = `Hello ${customer.name},\n\nThank you for choosing Karshani Enterprises for your solar needs.\n\n— Karshani Enterprises\nPhone: 9720669669\nEmail: enterpriseskarshani@gmail.com`;
+  const emailLink = `mailto:${customer.phone ? "" : ""}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <Link href="/customers" className="text-sm text-[#787468] hover:text-amber-700">← Customers</Link>
           <h2 className="font-serif text-lg">{customer.name}</h2>
+          {/* Follow-up status badge */}
+          <span
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+              followUpStatus.color === "green"
+                ? "bg-green-50 text-green-700 border-green-200"
+                : followUpStatus.color === "yellow"
+                ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                : followUpStatus.color === "orange"
+                ? "bg-orange-50 text-orange-700 border-orange-200"
+                : followUpStatus.color === "red"
+                ? "bg-red-50 text-red-700 border-red-200"
+                : "bg-gray-50 text-gray-700 border-gray-200"
+            }`}
+          >
+            {followUpStatus.label}
+          </span>
         </div>
-        <Link
-          href={`/quotations/new?customerId=${customer.id}`}
-          className="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-amber-700"
-        >
-          + New Quotation
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          {customer.phone && (
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noreferrer"
+              className="bg-green-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-green-700 flex items-center gap-1.5"
+            >
+              <span>💬</span> WhatsApp
+            </a>
+          )}
+          <a
+            href={emailLink}
+            className="bg-white border border-[#e6e0d4] text-[#1c1915] px-3 py-2 rounded-md text-sm font-semibold hover:bg-[#faf6f0] flex items-center gap-1.5"
+          >
+            <span>✉️</span> Email
+          </a>
+          <Link
+            href={`/quotations/new?customerId=${customer.id}`}
+            className="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-amber-700"
+          >
+            + New Quotation
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4 mb-4 grid-cols-4 max-lg:grid-cols-2 max-sm:grid-cols-1">

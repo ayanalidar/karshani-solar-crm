@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { useTheme } from "@/components/ThemeProvider";
 
 type NavItem = {
   href?: string;
@@ -35,11 +36,14 @@ const NAV_ITEMS: NavItem[] = [
   { type: "group", label: "People" },
   { href: "/employees", label: "Employees", icon: "🧑‍💼" },
   { href: "/users", label: "Users", icon: "🔑" },
+  { type: "group", label: "System" },
+  { href: "/settings", label: "Settings", icon: "⚙️" },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [badges, setBadges] = useState<{ lowStock?: number; amcExpiring?: number }>({});
 
@@ -134,18 +138,26 @@ export function Shell({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
         <InstallPrompt />
-        <header className="sticky top-0 z-10 bg-[#faf6f0] border-b border-[#e6e0d4] px-8 py-4 flex items-center justify-between gap-4 max-lg:px-4">
+        <header className="sticky top-0 z-10 bg-[#faf6f0] dark:bg-[#0f0e0c] border-b border-[#e6e0d4] dark:border-[#2e2a25] px-8 py-4 flex items-center justify-between gap-4 max-lg:px-4">
           <div className="flex items-center gap-4">
             <button
-              className="lg:hidden w-8 h-8 flex items-center justify-center rounded border border-[#e6e0d4] bg-white text-lg"
+              className="lg:hidden w-8 h-8 flex items-center justify-center rounded border border-[#e6e0d4] dark:border-[#2e2a25] bg-white dark:bg-[#1a1815] text-lg"
               onClick={() => setMobileOpen(true)}
             >
               ☰
             </button>
-            <h1 className="font-serif text-xl text-[#1c1915] tracking-tight">
+            <h1 className="font-serif text-xl text-[#1c1915] dark:text-[#f5efe5] tracking-tight">
               {NAV_ITEMS.find((i) => i.href === pathname)?.label || "Dashboard"}
             </h1>
           </div>
+          <button
+            onClick={toggleTheme}
+            className="w-9 h-9 flex items-center justify-center rounded-md border border-[#e6e0d4] dark:border-[#2e2a25] bg-white dark:bg-[#1a1815] text-base hover:bg-[#faf6f0] dark:hover:bg-[#2a2620]"
+            aria-label="Toggle dark mode"
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
         </header>
         <main className="p-8 max-lg:p-4 flex-1">{children}</main>
       </div>
