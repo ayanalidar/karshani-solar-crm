@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 type NavItem = {
   href?: string;
@@ -39,6 +40,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [badges, setBadges] = useState<{ lowStock?: number; amcExpiring?: number }>({});
+
+  // Subscribe to realtime DB changes — any insert/update/delete on any
+  // table triggers a debounced router.refresh() so lists + KPIs update
+  // instantly without manual page reload.
+  useRealtimeRefresh();
 
   // Fetch badges on mount + every 60s
   useEffect(() => {
