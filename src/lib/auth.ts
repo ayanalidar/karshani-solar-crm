@@ -15,12 +15,10 @@ export const { handlers: { GET, POST }, signIn, signOut, auth } = NextAuth({
           const user = await prisma.user.findFirst({ where: { pin } });
           if (user) return { id: user.id, name: user.name, role: user.role };
         } catch {
-          // DB unreachable — continue to fallback
+          // DB unreachable
         }
 
-        if (pin === "0000") {
-          return { id: "admin-001", name: "Admin", role: "admin" };
-        }
+        if (pin === "0000") return { id: "admin-001", name: "Admin", role: "admin" };
         return null;
       },
     }),
@@ -34,13 +32,12 @@ export const { handlers: { GET, POST }, signIn, signOut, auth } = NextAuth({
       return token;
     },
     session({ session, token }) {
-      if (session.user) {
-        (session as any).user.role = token.role;
-      }
+      if (session.user) (session as any).user.role = token.role;
       return session;
     },
   },
   pages: { signIn: "/login" },
   session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET,
+  trustHost: true,
 });
