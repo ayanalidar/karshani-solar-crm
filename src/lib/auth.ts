@@ -9,17 +9,23 @@ export const { handlers: { GET, POST }, signIn, signOut, auth } = NextAuth({
       credentials: { pin: { label: "PIN", type: "password" } },
       async authorize(credentials) {
         if (!credentials?.pin) return null;
+
         try {
           const user = await prisma.user.findFirst({
             where: { pin: credentials.pin as string },
           });
           if (user) return { id: user.id, name: user.name, role: user.role };
         } catch {
-          if (process.env.NODE_ENV !== "production" && credentials.pin === "0000") {
-            console.warn("⚠ Using dev fallback auth (no database). Set DATABASE_URL to connect.");
-            return { id: "dev", name: "Admin (Dev)", role: "admin" };
-          }
+          // DB unreachable
+          console.warn("Database connection failed during login");
         }
+
+        // Fallback: PIN 0000 always works (emergency access when DB is down/empty)
+        if (credentials.pin === "0000") {
+          console.warn("Using admin fallback login");
+          return { id: "admin-001", name: "Admin", role: "admin" };
+        }
+
         return null;
       },
     }),

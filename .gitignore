@@ -9,3 +9,5 @@ node_modules/
 .wrangler/
 .open-next/
 .dev.vars
+
+.vercel
