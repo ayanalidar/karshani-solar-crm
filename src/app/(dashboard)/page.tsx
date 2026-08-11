@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function DashboardPage() {
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex justify-between items-center text-sm text-amber-800 mb-4 flex-wrap gap-2">
         <span>⚠ {invoices.filter((i) => i.status === "overdue").length} payments overdue</span>
-        <a href="/invoices" className="text-xs font-semibold bg-white border border-amber-200 px-3 py-1 rounded">View All</a>
+        <Link href="/invoices" className="text-xs font-semibold bg-white border border-amber-200 px-3 py-1 rounded">View All</Link>
       </div>
 
       <div className="grid gap-4 grid-cols-[2fr_1fr] max-lg:grid-cols-1">

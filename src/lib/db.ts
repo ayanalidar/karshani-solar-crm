@@ -8,7 +8,8 @@ const adapter = new PrismaPg({ connectionString: connectionString || "postgresql
 const baseClient = new PrismaClient({ adapter });
 
 // Recursively wrap all model delegates so nested calls survive
-// build-time DB failures by returning empty arrays instead of crashing
+// build-time DB failures by returning empty arrays instead of crashing.
+// Errors are logged so silent DB failures don't get hidden in production.
 function safeWrap<T extends object>(obj: T): T {
   return new Proxy(obj, {
     get(target, prop, receiver) {
@@ -17,7 +18,8 @@ function safeWrap<T extends object>(obj: T): T {
         return async (...args: unknown[]) => {
           try {
             return await (value as (...a: unknown[]) => unknown).apply(target, args);
-          } catch {
+          } catch (err) {
+            console.error("[prisma] query failed:", String(prop), err instanceof Error ? err.message : err);
             if (Array.isArray(args[0])) return [];
             if (args.length > 0 && typeof args[0] === "object") return [];
             return null;
