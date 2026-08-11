@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { Pool } from "pg";
 
 // Diagnostics endpoint — returns env var status + DB connection test.
 // Safe to expose (no secrets leaked, only boolean + error messages).
@@ -10,27 +11,53 @@ export async function GET() {
   const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const hasSupabaseAnon = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-  // Test DB connection by counting a small table
-  let dbStatus: "ok" | "error" | "empty" = "empty";
-  let dbError = "";
-  let productCount = 0;
+  // --- Test 1: Prisma ORM ---
+  let prismaStatus: "ok" | "error" | "empty" = "empty";
+  let prismaError = "";
+  let prismaProductCount = 0;
   try {
     const products = await prisma.product.findMany({ select: { id: true } });
-    productCount = Array.isArray(products) ? products.length : 0;
-    dbStatus = productCount > 0 ? "ok" : "empty";
+    prismaProductCount = Array.isArray(products) ? products.length : 0;
+    prismaStatus = prismaProductCount > 0 ? "ok" : "empty";
   } catch (err: any) {
-    dbStatus = "error";
-    dbError = err?.message || String(err);
+    prismaStatus = "error";
+    prismaError = err?.message || String(err);
   }
 
-  // Show masked connection string for debugging (host only, no password)
-  const dbUrl = process.env.DATABASE_URL || "";
+  // --- Test 2: Raw pg connection (bypasses Prisma entirely) ---
+  let rawStatus: "ok" | "error" | "empty" = "empty";
+  let rawError = "";
+  let rawProductCount = 0;
+  let rawTableList: string[] = [];
+  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
+  if (connectionString) {
+    let pool: Pool | null = null;
+    try {
+      pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 10000 });
+      const res = await pool.query("SELECT COUNT(*)::int as cnt FROM products");
+      rawProductCount = res.rows[0]?.cnt || 0;
+      rawStatus = rawProductCount > 0 ? "ok" : "empty";
+
+      // Also list all tables to verify schema
+      const tables = await pool.query(
+        "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"
+      );
+      rawTableList = tables.rows.map((r: any) => r.tablename);
+    } catch (err: any) {
+      rawStatus = "error";
+      rawError = err?.message || String(err);
+    } finally {
+      if (pool) await pool.end();
+    }
+  }
+
+  // Show masked connection string
   let maskedUrl = "";
   try {
-    const u = new URL(dbUrl);
+    const u = new URL(connectionString);
     maskedUrl = `${u.protocol}//***:***@${u.host}${u.pathname}`;
   } catch {
-    maskedUrl = dbUrl ? "(invalid URL format)" : "(not set)";
+    maskedUrl = connectionString ? "(invalid URL format)" : "(not set)";
   }
 
   return NextResponse.json({
@@ -43,36 +70,67 @@ export async function GET() {
       NEXT_PUBLIC_SUPABASE_ANON_KEY_set: hasSupabaseAnon,
       NODE_ENV: process.env.NODE_ENV,
     },
-    database: {
-      status: dbStatus,
-      productCount,
-      error: dbError,
-      connectionUrlMasked: maskedUrl,
+    prisma: {
+      status: prismaStatus,
+      productCount: prismaProductCount,
+      error: prismaError,
     },
-    diagnosis: getDiagnosis(hasDbUrl, hasDirectUrl, dbStatus, dbError),
+    rawPg: {
+      status: rawStatus,
+      productCount: rawProductCount,
+      error: rawError,
+      tablesInPublicSchema: rawTableList,
+    },
+    connectionUrlMasked: maskedUrl,
+    diagnosis: getDiagnosis(
+      hasDbUrl,
+      hasDirectUrl,
+      prismaStatus,
+      prismaError,
+      rawStatus,
+      rawError,
+      rawProductCount,
+      rawTableList
+    ),
   });
 }
 
-function getDiagnosis(hasDb: boolean, hasDirect: boolean, status: string, error: string): string[] {
+function getDiagnosis(
+  hasDb: boolean,
+  hasDirect: boolean,
+  prismaStatus: string,
+  prismaError: string,
+  rawStatus: string,
+  rawError: string,
+  rawCount: number,
+  tables: string[]
+): string[] {
   const out: string[] = [];
-  if (!hasDb) out.push("❌ DATABASE_URL is not set on Vercel. Add it in Settings → Environment Variables.");
-  if (!hasDirect) out.push("❌ DIRECT_URL is not set on Vercel. Add it in Settings → Environment Variables.");
-  if (hasDb && status === "error") {
-    if (error.includes("ECONNREFUSED") || error.includes("Can't reach database server")) {
-      out.push("❌ Vercel can't reach Supabase Postgres. The Supabase project may be paused (free tier auto-pauses after 7 days of inactivity). Restore it from the Supabase Dashboard → Settings → General.");
-    } else if (error.includes("password authentication failed")) {
+  if (!hasDb) out.push("❌ DATABASE_URL is not set on Vercel.");
+  if (!hasDirect) out.push("❌ DIRECT_URL is not set on Vercel.");
+
+  if (rawStatus === "error") {
+    if (rawError.includes("ECONNREFUSED") || rawError.includes("timeout")) {
+      out.push("❌ Vercel can't reach Supabase Postgres. The Supabase project may be paused (free tier auto-pauses after 7 days of inactivity). Restore it from Supabase Dashboard → Settings → General.");
+    } else if (rawError.includes("password authentication failed")) {
       out.push("❌ Database password is wrong. Make sure to URL-encode special characters: @ → %40, # → %23, etc.");
-    } else if (error.includes("relation") && error.includes("does not exist")) {
-      out.push("❌ Some tables don't exist on Supabase. Run scripts/setup-supabase.sql + scripts/create-invoice-items.sql in Supabase SQL Editor.");
     } else {
-      out.push(`❌ DB connection error: ${error}`);
+      out.push(`❌ Raw pg connection error: ${rawError}`);
     }
+  } else if (rawStatus === "ok" && prismaStatus === "empty") {
+    out.push("⚠ Raw pg sees " + rawCount + " products but Prisma sees 0. This is a Prisma client/schema issue. Try running `npx prisma generate` and redeploying.");
+  } else if (rawStatus === "ok" && prismaStatus === "ok") {
+    out.push("✅ Everything looks good — both raw pg and Prisma can see data.");
+  } else if (rawStatus === "empty") {
+    out.push("⚠ Database is connected but has no products. Run scripts/seed-supabase.ts to insert sample data.");
   }
-  if (hasDb && status === "empty" && !error) {
-    out.push("⚠ DB connected but no products found. Run scripts/seed-supabase.ts or scripts/seed-more-data.ts to insert sample data.");
+
+  if (tables.length > 0 && !tables.includes("products")) {
+    out.push("❌ 'products' table not found in public schema. Tables present: " + tables.join(", "));
   }
-  if (status === "ok") {
-    out.push("✅ Everything looks good — DB is connected and has data.");
+  if (tables.length === 0 && rawStatus === "ok") {
+    out.push("⚠ No tables found in public schema. Run scripts/setup-supabase.sql in Supabase SQL Editor.");
   }
+
   return out;
 }

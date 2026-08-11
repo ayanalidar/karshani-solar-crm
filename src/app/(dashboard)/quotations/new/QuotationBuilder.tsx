@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatINR, todayISO } from "@/lib/format";
+import { TemplatePicker } from "@/components/TemplatePicker";
+import type { QuotationTemplate } from "@/lib/quotation-templates";
 
 type Product = {
   id: string;
@@ -45,6 +47,7 @@ export function QuotationBuilder({ products, customers }: { products: Product[];
   ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [templateOpen, setTemplateOpen] = useState(false);
 
   // Auto-fill from selected customer
   useEffect(() => {
@@ -89,6 +92,22 @@ export function QuotationBuilder({ products, customers }: { products: Product[];
       ...prev,
       { key: crypto.randomUUID(), itemName: "", hsnCode: "", quantity: 1, unitPrice: 0, gstPercentage: 5 },
     ]);
+  };
+
+  // Apply a template — replaces all current line items with the template's
+  // items + fills system description. Customer fields are preserved.
+  const applyTemplate = (tpl: QuotationTemplate) => {
+    setLines(
+      tpl.items.map((i) => ({
+        key: crypto.randomUUID(),
+        itemName: i.itemName,
+        hsnCode: i.hsnCode,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        gstPercentage: i.gstPercentage,
+      }))
+    );
+    setSystemDescription(tpl.systemDescription);
   };
 
   const removeLine = (key: string) => {
@@ -154,7 +173,19 @@ export function QuotationBuilder({ products, customers }: { products: Product[];
           <Link href="/quotations" className="text-sm text-[#787468] hover:text-amber-700">← Quotations</Link>
           <h2 className="font-serif text-lg">New Quotation</h2>
         </div>
+        <button
+          onClick={() => setTemplateOpen(true)}
+          className="bg-white border border-amber-600 text-amber-700 px-4 py-2 rounded-md text-sm font-semibold hover:bg-amber-50 flex items-center gap-1.5"
+        >
+          <span>📋</span> Use Template
+        </button>
       </div>
+
+      <TemplatePicker
+        open={templateOpen}
+        onClose={() => setTemplateOpen(false)}
+        onPick={applyTemplate}
+      />
 
       <div className="bg-white border border-[#e6e0d4] rounded-xl p-5 mb-4">
         <h3 className="text-sm font-semibold mb-3">Customer Details</h3>
