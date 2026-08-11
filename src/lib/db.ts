@@ -20,8 +20,17 @@ function safeWrap<T extends object>(obj: T): T {
             return await (value as (...a: unknown[]) => unknown).apply(target, args);
           } catch (err) {
             console.error("[prisma] query failed:", String(prop), err instanceof Error ? err.message : err);
-            if (Array.isArray(args[0])) return [];
-            if (args.length > 0 && typeof args[0] === "object") return [];
+            // findMany / findUnique / findFirst / count: return [] or null based on shape.
+            // findMany ALWAYS returns array (even with no args). Others return null.
+            const name = String(prop);
+            if (name === "findMany" || name === "findUnique" || name === "findFirst" || name === "count") {
+              if (name === "findMany" || name === "count") return [];
+              return null;
+            }
+            // Aggregations like aggregate() return object shape; return safe default
+            if (name === "aggregate") return { _count: {} };
+            if (name === "groupBy") return [];
+            // Mutations: create/update/delete return null on failure
             return null;
           }
         };

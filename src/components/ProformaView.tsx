@@ -1,6 +1,7 @@
 import { COMPANY } from "@/lib/company";
 import { formatINRNumber, formatDate, numberToWords, fiscalYearPrefix } from "@/lib/format";
 import { PrintButton } from "@/components/PrintButton";
+import { renderUpiQrDataUrl } from "@/lib/upi";
 
 export type ProformaItem = {
   id: string;
@@ -40,7 +41,8 @@ export type ProformaData = {
 
 // Shared layout used for both proforma invoice (quotation) and tax invoice.
 // Matches the Karshani Enterprises sample layout pixel-for-pixel.
-export function ProformaView({
+// NOTE: This component is async because it renders the UPI QR code server-side.
+export async function ProformaView({
   data,
   kind,
 }: {
@@ -70,6 +72,13 @@ export function ProformaView({
 
   const totalQty = data.items.reduce((s, i) => s + i.quantity, 0);
   const words = numberToWords(Math.round(data.grandTotal));
+
+  // UPI QR is only shown on proforma invoices, encoded with the bill amount.
+  // Tax invoices don't show the QR (per product requirement).
+  const upiQrDataUrl =
+    kind === "proforma"
+      ? await renderUpiQrDataUrl(data.grandTotal, `${data.docNo} ${data.customerName}`.slice(0, 80))
+      : null;
 
   return (
     <div
@@ -346,10 +355,31 @@ export function ProformaView({
         <div>
           <div className="section-label">Bank Details:</div>
           <div className="bank-block" style={{ marginTop: "6px" }}>
-            <div className="qr-placeholder">
-              UPI QR<br />
-              {COMPANY.bankDetails.upiId}
-            </div>
+            {upiQrDataUrl ? (
+              // Real UPI QR code (proforma only) — encodes the bill amount
+              <div style={{ textAlign: "center" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={upiQrDataUrl}
+                  alt="UPI QR"
+                  style={{ width: "120px", height: "120px", border: "1px solid #ccc", borderRadius: "4px" }}
+                />
+                <div className="muted" style={{ fontSize: "9px", marginTop: "4px" }}>
+                  Pay ₹{formatINRNumber(data.grandTotal)} via UPI
+                </div>
+                <div className="muted" style={{ fontSize: "8px" }}>
+                  {COMPANY.bankDetails.upiId}
+                </div>
+              </div>
+            ) : (
+              // No QR for tax invoices — show "Pay via bank transfer" note
+              <div
+                className="qr-placeholder"
+                style={{ width: "120px", height: "120px" }}
+              >
+                Bank transfer only
+              </div>
+            )}
             <div style={{ fontSize: "11px" }}>
               <div><span className="muted">Name:</span> {COMPANY.bankDetails.bankName}</div>
               <div><span className="muted">Account No.:</span> {COMPANY.bankDetails.accountNumber}</div>
