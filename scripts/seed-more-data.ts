@@ -1,8 +1,8 @@
 // Add substantial sample data to all tables via Supabase REST API.
 // Idempotent: uses deterministic IDs so reruns are safe.
 
-const SUPABASE_URL = "https://jmxbqvzxzezjqyoqfzdz.supabase.co";
-const SERVICE_ROLE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpteGJxdnp4emV6anF5b3FmemR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjM4NDEwNywiZXhwIjoyMTAxOTYwMTA3fQ.nCCOXGiRfpIpAMRws7rz6k-m7NRNXJZbqsweCRA1iOM";
+const SUPABASE_URL = "https://ayiwltqmxbvurxoqyvbw.supabase.co";
+const SERVICE_ROLE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5aXdsdHFteGJ2dXJ4b3F5dmJ3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjQ3NTY4NCwiZXhwIjoyMTAyMDUxNjg0fQ.llkUKBSu8ueY7Bcev4lojqjsUNSDYasl_Bp5cA48L0Q";
 
 const headers = {
   apikey: SERVICE_ROLE,

@@ -34,17 +34,30 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  /* Prevent horizontal scroll globally — anything wider than viewport
-     scrolls inside its own container instead of the page. */
+  /* Prevent ALL horizontal scroll + bouncy swipe gestures.
+     overflow-x: hidden stops horizontal overflow at the page level.
+     overscroll-behavior: none stops the iOS rubber-band / Chrome
+     pull-to-refresh / two-finger swipe bounce at the page level. */
   overflow-x: hidden;
-  /* Bouncy scroll prevention — clamp overscroll on iOS Safari */
-  overscrollBehaviorX: none;
+  overscroll-behavior: none;
+  /* touch-action: pan-y pan-x means the browser handles only vertical
+     and horizontal pan with one finger, but disables pinch-zoom and
+     double-tap zoom (kills the "two-finger bounce" feeling). */
+  touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
+  /* Prevent text size adjust on orientation change (iOS) */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Disable tap highlight color (iOS) — looks more app-like */
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
-  /* Also clamp horizontal scroll on the root element */
+  /* Clamp horizontal scroll on the root element too */
   overflow-x: hidden;
+  /* overscroll-behavior: none on root too — kills the page-level
+     bounce entirely. Combined with body, this catches everything. */
+  overscroll-behavior: none;
   /* Smooth vertical scroll only */
   scroll-behavior: smooth;
 }
@@ -64,6 +77,21 @@ svg {
 /* Prevent modals from causing page scroll behind them */
 body:has(.modal-open) {
   overflow: hidden;
+}
+
+/* Scrollable containers inside the page (tables, lists, modals) should
+   bounce INSIDE their own scroll, not propagate to the page. This is
+   what makes the dashboard feel "fixed" — each section scrolls
+   independently instead of the whole page bouncing. */
+.overflow-x-auto,
+.overflow-y-auto,
+.overflow-auto {
+  overscroll-behavior: contain;
+}
+
+/* Sidebar nav should not bounce either */
+nav {
+  overscroll-behavior: contain;
 }
 
 /* Make all the hardcoded color classes theme-aware via CSS variables.

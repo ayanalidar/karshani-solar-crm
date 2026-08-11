@@ -1,6 +1,6 @@
 -- Enable Supabase Realtime on all Karshani CRM tables.
--- Run this once in Supabase SQL Editor.
--- https://supabase.com/dashboard/project/jmxbqvzxzezjqyoqfzdz/sql/new
+-- Run this once in Supabase SQL Editor (already included in setup-supabase.sql).
+-- https://supabase.com/dashboard/project/ayiwltqmxbvurxoqyvbw/sql/new
 
 -- Add every table to the supabase_realtime publication so postgres_changes
 -- events are broadcast to subscribed browser clients.

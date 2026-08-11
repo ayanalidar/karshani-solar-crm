@@ -38,8 +38,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (err?.message?.includes("column") || err?.message?.includes("does not exist")) {
       return NextResponse.json(
         {
-          error: "Print tracking columns not added to database yet. Run scripts/add-print-columns.sql in Supabase SQL Editor.",
-          hint: "https://supabase.com/dashboard/project/jmxbqvzxzezjqyoqfzdz/sql/new",
+          error: "Print tracking columns not added to database yet. Run scripts/setup-supabase.sql in Supabase SQL Editor (includes printed_at + print_count columns).",
+          hint: "https://supabase.com/dashboard/project/ayiwltqmxbvurxoqyvbw/sql/new",
         },
         { status: 500 }
       );
