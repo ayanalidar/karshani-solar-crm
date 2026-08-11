@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { useState } from "react";
 
 const NAV_ITEMS = [
@@ -32,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
-    await signOut({ redirect: false });
+    await fetch("/api/logout", { method: "POST" });
     router.push("/login");
   };
 

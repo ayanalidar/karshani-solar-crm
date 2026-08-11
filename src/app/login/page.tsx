@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -24,15 +23,24 @@ export default function LoginPage() {
   const handleLogin = async (p: string) => {
     setLoading(true);
     setError("");
-    const result = await signIn("credentials", { pin: p, redirect: false });
-    if (result?.error) {
-      setError("Wrong PIN. Try again.");
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: p }),
+      });
+      if (res.ok) {
+        router.push("/");
+        router.refresh();
+      } else {
+        setError("Wrong PIN. Try again.");
+        setPin("");
+      }
+    } catch {
+      setError("Connection error. Try again.");
       setPin("");
-      setLoading(false);
-    } else {
-      router.push("/");
-      router.refresh();
     }
+    setLoading(false);
   };
 
   return (
