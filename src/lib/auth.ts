@@ -15,7 +15,6 @@ export const { handlers: { GET, POST }, signIn, signOut, auth } = NextAuth({
           });
           if (user) return { id: user.id, name: user.name, role: user.role };
         } catch {
-          // Database not connected — dev fallback
           if (process.env.NODE_ENV !== "production" && credentials.pin === "0000") {
             console.warn("⚠ Using dev fallback auth (no database). Set DATABASE_URL to connect.");
             return { id: "dev", name: "Admin (Dev)", role: "admin" };
@@ -28,14 +27,14 @@ export const { handlers: { GET, POST }, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
-        token.name = user.name || "";
+        (token as Record<string, unknown>).role = user.role;
+        (token as Record<string, unknown>).name = user.name || "";
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as Record<string, unknown>).role = token.role;
+        (session.user as unknown as Record<string, unknown>).role = (token as Record<string, unknown>).role;
       }
       return session;
     },

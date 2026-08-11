@@ -45,6 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ${mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full"}`}
       >
         <div className="p-5 border-b border-[#e6e0d4]">
+          <img src="/logo.jpeg" alt="KARSHANI ENTERPRISES" className="w-10 h-10 rounded-full object-cover border-2 border-amber-200 flex-shrink-0" />
           <h2 className="font-serif text-lg text-[#1c1915] leading-tight">KARSHANI<br />ENTERPRISES</h2>
           <span className="text-[10px] text-[#787468] uppercase tracking-wider">Solar CMS</span>
         </div>

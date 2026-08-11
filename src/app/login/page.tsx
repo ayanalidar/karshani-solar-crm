@@ -38,6 +38,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#faf6f0] flex items-center justify-center p-4">
       <div className="bg-white border border-[#e6e0d4] rounded-2xl p-10 max-w-sm w-full text-center shadow-xl">
+        <img src="/logo.jpeg" alt="KARSHANI ENTERPRISES" className="w-24 h-24 mx-auto rounded-full object-cover border-4 border-amber-100 shadow-md mb-4" />
         <h1 className="text-2xl font-serif text-[#1c1915] tracking-tight">KARSHANI</h1>
         <p className="text-xs text-[#787468] uppercase tracking-widest mt-1 mb-8">
           Solar Management System
