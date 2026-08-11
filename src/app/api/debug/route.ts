@@ -11,6 +11,8 @@ export async function GET() {
   const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const hasSupabaseAnon = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
+  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
+
   // --- Test 1: Prisma ORM ---
   let prismaStatus: "ok" | "error" | "empty" = "empty";
   let prismaError = "";
@@ -29,7 +31,6 @@ export async function GET() {
   let rawError = "";
   let rawProductCount = 0;
   let rawTableList: string[] = [];
-  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
   if (connectionString) {
     let pool: Pool | null = null;
     try {
@@ -38,7 +39,6 @@ export async function GET() {
       rawProductCount = res.rows[0]?.cnt || 0;
       rawStatus = rawProductCount > 0 ? "ok" : "empty";
 
-      // Also list all tables to verify schema
       const tables = await pool.query(
         "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"
       );
@@ -51,14 +51,25 @@ export async function GET() {
     }
   }
 
-  // Show masked connection string
+  // Mask connection string (show host:port + path, hide password)
   let maskedUrl = "";
+  let connectionHost = "";
   try {
     const u = new URL(connectionString);
     maskedUrl = `${u.protocol}//***:***@${u.host}${u.pathname}`;
+    connectionHost = u.host;
   } catch {
     maskedUrl = connectionString ? "(invalid URL format)" : "(not set)";
   }
+
+  // Detect IPv6-only hosts (the most common cause of ENOTFOUND on Vercel)
+  const isDirectSupabaseUrl = connectionHost.startsWith("db.") && connectionHost.endsWith(".supabase.co");
+  const isPoolerUrl = connectionHost.includes(".pooler.supabase.com");
+
+  // Extract project ref from connection string for suggesting pooler URL
+  let projectRef = "";
+  const refMatch = connectionHost.match(/([a-z0-9]+)\.supabase\.co/);
+  if (refMatch) projectRef = refMatch[1];
 
   return NextResponse.json({
     timestamp: new Date().toISOString(),
@@ -81,7 +92,13 @@ export async function GET() {
       error: rawError,
       tablesInPublicSchema: rawTableList,
     },
-    connectionUrlMasked: maskedUrl,
+    connection: {
+      urlMasked: maskedUrl,
+      host: connectionHost,
+      isDirectSupabaseUrl,
+      isPoolerUrl,
+      projectRef,
+    },
     diagnosis: getDiagnosis(
       hasDbUrl,
       hasDirectUrl,
@@ -90,8 +107,11 @@ export async function GET() {
       rawStatus,
       rawError,
       rawProductCount,
-      rawTableList
+      rawTableList,
+      isDirectSupabaseUrl,
+      projectRef
     ),
+    fix: getFixInstructions(isDirectSupabaseUrl, projectRef, rawError),
   });
 }
 
@@ -103,13 +123,17 @@ function getDiagnosis(
   rawStatus: string,
   rawError: string,
   rawCount: number,
-  tables: string[]
+  tables: string[],
+  isDirectSupabaseUrl: boolean,
+  projectRef: string
 ): string[] {
   const out: string[] = [];
   if (!hasDb) out.push("❌ DATABASE_URL is not set on Vercel.");
   if (!hasDirect) out.push("❌ DIRECT_URL is not set on Vercel.");
 
-  if (rawStatus === "error") {
+  if (rawError.includes("ENOTFOUND") && isDirectSupabaseUrl) {
+    out.push(`❌ DNS lookup failed for ${projectRef ? "db." + projectRef + ".supabase.co" : "Supabase direct URL"}. This is the IPv6-only issue — Vercel serverless can't resolve IPv6-only hosts. Switch to the Supabase POOLER URL (IPv4). See 'fix' section for exact value to paste on Vercel.`);
+  } else if (rawStatus === "error") {
     if (rawError.includes("ECONNREFUSED") || rawError.includes("timeout")) {
       out.push("❌ Vercel can't reach Supabase Postgres. The Supabase project may be paused (free tier auto-pauses after 7 days of inactivity). Restore it from Supabase Dashboard → Settings → General.");
     } else if (rawError.includes("password authentication failed")) {
@@ -133,4 +157,30 @@ function getDiagnosis(
   }
 
   return out;
+}
+
+function getFixInstructions(isDirectSupabaseUrl: boolean, projectRef: string, rawError: string): string[] {
+  const steps: string[] = [];
+
+  if (rawError.includes("ENOTFOUND") && isDirectSupabaseUrl && projectRef) {
+    steps.push("ROOT CAUSE: Supabase's direct DB hostname (db.xxx.supabase.co) is IPv6-only, but Vercel serverless functions can't make outbound IPv6 connections. You MUST use the Supabase POOLER URL (IPv4) instead.");
+    steps.push("");
+    steps.push("HOW TO FIX (3 minutes):");
+    steps.push("1. Open Supabase Dashboard → your project → Settings → Database → Connection String");
+    steps.push("2. Switch the 'Connection mode' to 'Transaction' (or 'Session')");
+    steps.push("3. Copy the URL — it looks like:");
+    steps.push(`   postgresql://postgres.${projectRef}:YOUR-PASSWORD@aws-0.REGION.pooler.supabase.com:6543/postgres`);
+    steps.push("4. On Vercel → your project → Settings → Environment Variables");
+    steps.push("5. Update DATABASE_URL and DIRECT_URL to the new pooler URL");
+    steps.push("   (Make sure @ in the password is URL-encoded as %40)");
+    steps.push("6. Click Save, then Deployments → Redeploy the latest build");
+    steps.push("");
+    steps.push("Note: the POOLER username is 'postgres.PROJECT_REF' (with a dot, not just 'postgres'). For your project, that's 'postgres." + projectRef + "'.");
+    steps.push("");
+    steps.push("Note: For Prisma + transaction pooler, add ?pgbouncer=true&connection_limit=1 to the URL.");
+  } else if (rawError.includes("ENOTFOUND")) {
+    steps.push("DNS lookup failed. Check that the DATABASE_URL host is spelled correctly and the Supabase project is not paused.");
+  }
+
+  return steps;
 }

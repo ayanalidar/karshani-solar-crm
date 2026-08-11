@@ -19,15 +19,22 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
   icons: {
     icon: [
-      { url: "/logo.jpeg", sizes: "192x192", type: "image/jpeg" },
-      { url: "/logo.jpeg", sizes: "512x512", type: "image/jpeg" },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/logo.jpeg", sizes: "192x192", type: "image/jpeg" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/favicon.ico"],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#d97706",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#d97706" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f0e0c" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -57,7 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Set theme class before paint to avoid flash of wrong theme */}
+        {/* Pre-paint theme class to avoid flash of wrong theme */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -75,6 +82,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             `,
           }}
         />
+        {/* iOS PWA meta tags — needed for install + standalone display on iPhone */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Karshani CRM" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>

@@ -34,6 +34,36 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  /* Prevent horizontal scroll globally — anything wider than viewport
+     scrolls inside its own container instead of the page. */
+  overflow-x: hidden;
+  /* Bouncy scroll prevention — clamp overscroll on iOS Safari */
+  overscrollBehaviorX: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+html {
+  /* Also clamp horizontal scroll on the root element */
+  overflow-x: hidden;
+  /* Smooth vertical scroll only */
+  scroll-behavior: smooth;
+}
+
+/* Force long words/URLs to wrap instead of overflowing their container */
+table, td, th {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Make sure SVG charts scale down properly */
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent modals from causing page scroll behind them */
+body:has(.modal-open) {
+  overflow: hidden;
 }
 
 /* Make all the hardcoded color classes theme-aware via CSS variables.

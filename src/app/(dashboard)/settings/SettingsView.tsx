@@ -5,21 +5,12 @@ import { useTheme } from "@/components/ThemeProvider";
 
 type DebugInfo = {
   timestamp: string;
-  environment: {
-    DATABASE_URL_set: boolean;
-    DIRECT_URL_set: boolean;
-    AUTH_SECRET_set: boolean;
-    NEXT_PUBLIC_SUPABASE_URL_set: boolean;
-    NEXT_PUBLIC_SUPABASE_ANON_KEY_set: boolean;
-    NODE_ENV: string;
-  };
-  database: {
-    status: "ok" | "error" | "empty";
-    productCount: number;
-    error: string;
-    connectionUrlMasked: string;
-  };
+  environment: Record<string, any>;
+  prisma: { status: string; productCount: number; error: string };
+  rawPg: { status: string; productCount: number; error: string; tablesInPublicSchema: string[] };
+  connection: { urlMasked: string; host: string; isDirectSupabaseUrl: boolean; isPoolerUrl: boolean; projectRef: string };
   diagnosis: string[];
+  fix: string[];
 };
 
 export function SettingsView() {
@@ -28,6 +19,39 @@ export function SettingsView() {
   const [debugLoading, setDebugLoading] = useState(false);
   const [cacheStatus, setCacheStatus] = useState("");
   const [backupStatus, setBackupStatus] = useState("");
+  const [canInstall, setCanInstall] = useState(false);
+  const [installMsg, setInstallMsg] = useState("");
+
+  // Check PWA installability on mount
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      (window as any).__deferredPrompt = e;
+      setCanInstall(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    // Also check if already installed
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      setInstallMsg("App is installed — running in standalone mode");
+    }
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const triggerInstall = async () => {
+    const dp = (window as any).__deferredPrompt;
+    if (!dp) {
+      setInstallMsg("Install prompt not available yet. Browse the app for ~30 seconds, then try again. On iOS, use Share → Add to Home Screen.");
+      return;
+    }
+    dp.prompt();
+    const choice = await dp.userChoice;
+    if (choice.outcome === "accepted") {
+      setInstallMsg("✓ App installed — check your home screen / app list");
+      setCanInstall(false);
+    } else {
+      setInstallMsg("✗ Install cancelled");
+    }
+  };
 
   const fetchDebug = async () => {
     setDebugLoading(true);
@@ -38,16 +62,12 @@ export function SettingsView() {
     } catch (e: any) {
       setDebug({
         timestamp: new Date().toISOString(),
-        environment: {
-          DATABASE_URL_set: false,
-          DIRECT_URL_set: false,
-          AUTH_SECRET_set: false,
-          NEXT_PUBLIC_SUPABASE_URL_set: false,
-          NEXT_PUBLIC_SUPABASE_ANON_KEY_set: false,
-          NODE_ENV: "unknown",
-        },
-        database: { status: "error", productCount: 0, error: e.message, connectionUrlMasked: "" },
+        environment: {},
+        prisma: { status: "error", productCount: 0, error: e.message },
+        rawPg: { status: "error", productCount: 0, error: e.message, tablesInPublicSchema: [] },
+        connection: { urlMasked: "", host: "", isDirectSupabaseUrl: false, isPoolerUrl: false, projectRef: "" },
         diagnosis: [`Failed to fetch debug info: ${e.message}`],
+        fix: [],
       });
     } finally {
       setDebugLoading(false);
@@ -61,21 +81,17 @@ export function SettingsView() {
   const clearCache = async () => {
     setCacheStatus("Clearing…");
     try {
-      // 1. Clear all Cache API entries
       if ("caches" in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map((k) => caches.delete(k)));
       }
-      // 2. Unregister all service workers
       if ("serviceWorker" in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map((r) => r.unregister()));
       }
-      // 3. Clear localStorage (but keep theme)
       const savedTheme = localStorage.getItem("karshani-theme");
       localStorage.clear();
       if (savedTheme) localStorage.setItem("karshani-theme", savedTheme);
-      // 4. Clear sessionStorage
       sessionStorage.clear();
       setCacheStatus("✓ Cleared. Reloading…");
       setTimeout(() => window.location.reload(), 800);
@@ -109,6 +125,34 @@ export function SettingsView() {
     <div className="space-y-6 max-w-4xl">
       <h2 className="font-serif text-lg">Settings</h2>
 
+      {/* Install as App */}
+      <section className="bg-white dark:bg-[#1a1815] border border-[#e6e0d4] dark:border-[#2e2a25] rounded-xl p-5">
+        <h3 className="text-sm font-semibold mb-3">📱 Install as App</h3>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <div className="text-sm font-medium">Add to Home Screen / Desktop</div>
+            <div className="text-xs text-[#787468] dark:text-[#9c958a]">
+              Install Karshani CRM as a native app — works offline, opens in its own window, no browser chrome.
+            </div>
+          </div>
+          <button
+            onClick={triggerInstall}
+            disabled={!canInstall && !installMsg.includes("installed")}
+            className="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-amber-700 disabled:opacity-50"
+          >
+            Install App
+          </button>
+        </div>
+        {installMsg && (
+          <div className="mt-2 text-xs text-[#787468] dark:text-[#9c958a]">{installMsg}</div>
+        )}
+        {!canInstall && !installMsg && (
+          <div className="mt-2 text-xs text-[#787468] dark:text-[#9c958a]">
+            On iOS: tap the Share button → &quot;Add to Home Screen&quot;. On desktop Chrome/Edge: look for the install icon in the address bar.
+          </div>
+        )}
+      </section>
+
       {/* Appearance */}
       <section className="bg-white dark:bg-[#1a1815] border border-[#e6e0d4] dark:border-[#2e2a25] rounded-xl p-5">
         <h3 className="text-sm font-semibold mb-3">Appearance</h3>
@@ -116,7 +160,7 @@ export function SettingsView() {
           <div>
             <div className="text-sm font-medium">Dark Mode</div>
             <div className="text-xs text-[#787468] dark:text-[#9c958a]">
-              Toggle between light and dark theme. All data, cards, and text remain fully visible in both modes.
+              All data, cards, and text remain fully visible in both modes.
             </div>
           </div>
           <button
@@ -148,7 +192,7 @@ export function SettingsView() {
             <div>
               <div className="text-sm font-medium">Download Data Backup</div>
               <div className="text-xs text-[#787468] dark:text-[#9c958a]">
-                Export all CRM data (customers, products, invoices, quotations, etc.) as a JSON file.
+                Export all CRM data as a JSON file.
               </div>
             </div>
             <button
@@ -164,8 +208,7 @@ export function SettingsView() {
             <div>
               <div className="text-sm font-medium">Clear Browser Cache</div>
               <div className="text-xs text-[#787468] dark:text-[#9c958a]">
-                Clears service worker, cached files, and local storage (preserves your theme + login).
-                Page will reload.
+                Clears service worker, cached files, and local storage (preserves theme + login).
               </div>
             </div>
             <button
@@ -206,17 +249,37 @@ export function SettingsView() {
             <div>
               <div className="font-semibold mb-1">Database Connection:</div>
               <div className="font-mono space-y-1">
-                <div>Status: <StatusBadge status={debug.database.status} /></div>
-                <div>Products found: <strong>{debug.database.productCount}</strong></div>
-                <div>Connection URL: <span className="text-[#787468] dark:text-[#9c958a]">{debug.database.connectionUrlMasked}</span></div>
-                {debug.database.error && (
+                <div>Prisma: <StatusBadge status={debug.prisma.status} /> ({debug.prisma.productCount} products)</div>
+                <div>Raw pg: <StatusBadge status={debug.rawPg.status} /> ({debug.rawPg.productCount} products)</div>
+                <div>Host: <span className="text-[#787468] dark:text-[#9c958a]">{debug.connection.host || "—"}</span></div>
+                {debug.connection.isDirectSupabaseUrl && (
+                  <div className="text-orange-600 dark:text-orange-400 mt-1">
+                    ⚠ Using direct Supabase URL — this may fail on Vercel (IPv6-only). Switch to pooler URL.
+                  </div>
+                )}
+                {debug.connection.isPoolerUrl && (
+                  <div className="text-green-600 dark:text-green-400 mt-1">
+                    ✓ Using Supabase pooler URL — correct for Vercel.
+                  </div>
+                )}
+                {(debug.prisma.error || debug.rawPg.error) && (
                   <div className="text-red-600 dark:text-red-400 mt-2 p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded">
-                    {debug.database.error}
+                    {debug.prisma.error || debug.rawPg.error}
                   </div>
                 )}
               </div>
             </div>
-            {debug.diagnosis.length > 0 && (
+            {debug.rawPg.tablesInPublicSchema && debug.rawPg.tablesInPublicSchema.length > 0 && (
+              <div>
+                <div className="font-semibold mb-1">Tables in public schema ({debug.rawPg.tablesInPublicSchema.length}):</div>
+                <div className="font-mono text-[10px] text-[#787468] dark:text-[#9c958a] flex flex-wrap gap-1">
+                  {debug.rawPg.tablesInPublicSchema.map((t) => (
+                    <span key={t} className="px-1.5 py-0.5 bg-[#f5efe5] dark:bg-[#2a2620] rounded">{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {debug.diagnosis && debug.diagnosis.length > 0 && (
               <div>
                 <div className="font-semibold mb-1">Diagnosis:</div>
                 <ul className="space-y-1">
@@ -226,11 +289,16 @@ export function SettingsView() {
                 </ul>
               </div>
             )}
+            {debug.fix && debug.fix.length > 0 && (
+              <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded">
+                <div className="font-semibold mb-1 text-amber-800 dark:text-amber-300">How to fix:</div>
+                <pre className="whitespace-pre-wrap font-mono text-[11px] text-amber-900 dark:text-amber-200">{debug.fix.join("\n")}</pre>
+              </div>
+            )}
           </div>
         )}
       </section>
 
-      {/* About */}
       <section className="bg-white dark:bg-[#1a1815] border border-[#e6e0d4] dark:border-[#2e2a25] rounded-xl p-5">
         <h3 className="text-sm font-semibold mb-3">About</h3>
         <div className="text-xs text-[#787468] dark:text-[#9c958a] space-y-1">
@@ -254,11 +322,11 @@ function EnvRow({ label, set }: { label: string; set: boolean }) {
   );
 }
 
-function StatusBadge({ status }: { status: "ok" | "error" | "empty" }) {
-  const colors = {
+function StatusBadge({ status }: { status: string }) {
+  const colors: Record<string, string> = {
     ok: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
     error: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
     empty: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
   };
-  return <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${colors[status]}`}>{status.toUpperCase()}</span>;
+  return <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${colors[status] || colors.empty}`}>{status.toUpperCase()}</span>;
 }
