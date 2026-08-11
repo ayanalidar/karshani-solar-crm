@@ -2,24 +2,34 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-const NAV_ITEMS = [
+type NavItem = {
+  href?: string;
+  label: string;
+  icon?: string;
+  type?: "group" | "item";
+  badgeKey?: "lowStock" | "amcExpiring";
+};
+
+const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Dashboard", icon: "◐" },
-  { href: "/inventory", label: "Inventory", icon: "⊞" },
+  { href: "/inventory", label: "Inventory", icon: "⊞", badgeKey: "lowStock" },
   { type: "group", label: "Sales" },
   { href: "/billing", label: "Billing", icon: "₹" },
   { href: "/customers", label: "Customers", icon: "👥" },
   { href: "/enquiries", label: "Enquiries", icon: "💬" },
   { href: "/quotations", label: "Quotations", icon: "📄" },
   { href: "/invoices", label: "Invoices", icon: "📋" },
+  { type: "group", label: "Procurement" },
   { href: "/suppliers", label: "Suppliers & PO", icon: "📦" },
   { type: "group", label: "Finance" },
   { href: "/expenses", label: "Expenses", icon: "💰" },
   { href: "/cashbook", label: "Cash Book", icon: "📒" },
+  { href: "/reports/gst", label: "GST Report", icon: "📊" },
   { type: "group", label: "Operations" },
   { href: "/installations", label: "Installations", icon: "⚡" },
-  { href: "/amc", label: "AMC & Warranty", icon: "🛡️" },
+  { href: "/amc", label: "AMC & Warranty", icon: "🛡️", badgeKey: "amcExpiring" },
   { type: "group", label: "People" },
   { href: "/employees", label: "Employees", icon: "🧑‍💼" },
 ];
@@ -28,6 +38,22 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [badges, setBadges] = useState<{ lowStock?: number; amcExpiring?: number }>({});
+
+  // Fetch badges on mount + every 60s
+  useEffect(() => {
+    const fetchBadges = async () => {
+      try {
+        const res = await fetch("/api/badges");
+        if (res.ok) setBadges(await res.json());
+      } catch {
+        // ignore
+      }
+    };
+    fetchBadges();
+    const t = setInterval(fetchBadges, 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/logout", { method: "POST" });
@@ -65,7 +91,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <span className="w-4 text-center text-xs">{item.icon}</span>
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {item.badgeKey && badges[item.badgeKey] ? (
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      item.badgeKey === "lowStock"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {badges[item.badgeKey]}
+                  </span>
+                ) : null}
               </Link>
             )
           )}

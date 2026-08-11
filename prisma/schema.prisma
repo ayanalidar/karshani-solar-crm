@@ -111,8 +111,23 @@ model Invoice {
   createdAt    DateTime @default(now()) @map("created_at")
   customerId   String?  @map("customer_id")
   customer     Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items        InvoiceItem[]
 
   @@map("invoices")
+}
+
+model InvoiceItem {
+  id           String   @id @default(uuid())
+  invoiceId    String   @map("invoice_id")
+  itemName     String   @map("item_name")
+  hsnCode      String   @default("") @map("hsn_code")
+  quantity     Int      @default(1)
+  unitPrice    Float    @default(0) @map("unit_price")
+  gstPercentage Float   @default(5) @map("gst_percentage")
+  amount       Float    @default(0)
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
 }
 
 model Installation {

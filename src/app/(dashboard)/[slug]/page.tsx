@@ -1,81 +1,194 @@
 import { prisma } from "@/lib/db";
+import { CrudTable, type ModuleConfig } from "@/components/CrudTable";
+import { formatINR, formatDate } from "@/lib/format";
+import { StatusPill } from "@/components/StatusPill";
 
 export const dynamic = "force-dynamic";
 
-const APP_PAGES: Record<string, { label: string; color: string }> = {
-  enquiries: { label: "Enquiries", color: "blue" },
-  quotations: { label: "Quotations", color: "amber" },
-  invoices: { label: "Invoices", color: "green" },
-  suppliers: { label: "Suppliers & PO", color: "slate" },
-  expenses: { label: "Expenses", color: "red" },
-  cashbook: { label: "Cash Book", color: "emerald" },
-  installations: { label: "Installations", color: "purple" },
-  amc: { label: "AMC & Warranty", color: "orange" },
-  employees: { label: "Employees", color: "teal" },
+const MODULE_CONFIGS: Record<string, ModuleConfig> = {
+  enquiries: {
+    slug: "enquiries",
+    apiPath: "/api/enquiries",
+    label: "Enquiries",
+    columns: [
+      { key: "customerName", label: "Customer" },
+      { key: "phone", label: "Phone", className: "font-mono text-xs" },
+      { key: "source", label: "Source" },
+      { key: "systemDescription", label: "System", className: "text-xs text-[#504d44]" },
+      {
+        key: "estimatedAmount",
+        label: "Est. Amount",
+        className: "text-right",
+        format: (v) => formatINR(Number(v || 0)),
+      },
+      { key: "status", label: "Status", format: (v) => <StatusPill status={v} /> },
+    ],
+    fields: [
+      { name: "customerName", label: "Customer Name", type: "text", required: true },
+      { name: "phone", label: "Phone", type: "text" },
+      { name: "source", label: "Source", type: "select", options: ["walk-in", "phone", "online", "referral", "whatsapp"] },
+      { name: "systemDescription", label: "System Description", type: "textarea" },
+      { name: "estimatedAmount", label: "Estimated Amount (₹)", type: "number" },
+      { name: "status", label: "Status", type: "select", options: ["new", "quoted", "negotiating", "won", "lost"] },
+      { name: "notes", label: "Notes", type: "textarea" },
+    ],
+  },
+  suppliers: {
+    slug: "suppliers",
+    apiPath: "/api/suppliers",
+    label: "Suppliers & PO",
+    columns: [
+      { key: "poNumber", label: "PO No.", className: "font-mono text-xs" },
+      { key: "supplierName", label: "Supplier" },
+      { key: "items", label: "Items", className: "text-xs text-[#504d44]" },
+      { key: "amount", label: "Amount", className: "text-right", format: (v) => formatINR(Number(v || 0)) },
+      { key: "orderDate", label: "Order Date", format: (v) => formatDate(v) },
+      { key: "status", label: "Status", format: (v) => <StatusPill status={v} /> },
+    ],
+    fields: [
+      { name: "supplierName", label: "Supplier Name", type: "text", required: true },
+      { name: "items", label: "Items (description)", type: "textarea", required: true },
+      { name: "amount", label: "Amount (₹)", type: "number" },
+      { name: "orderDate", label: "Order Date", type: "date" },
+      { name: "status", label: "Status", type: "select", options: ["pending", "delivered", "cancelled"] },
+    ],
+  },
+  expenses: {
+    slug: "expenses",
+    apiPath: "/api/expenses",
+    label: "Expenses",
+    columns: [
+      { key: "category", label: "Category" },
+      { key: "description", label: "Description" },
+      { key: "amount", label: "Amount", className: "text-right", format: (v) => formatINR(Number(v || 0)) },
+      { key: "expenseDate", label: "Date", format: (v) => formatDate(v) },
+    ],
+    fields: [
+      { name: "category", label: "Category", type: "select", required: true, options: ["Rent", "Salary", "Utilities", "Transport", "Marketing", "Purchase", "Maintenance", "Misc"] },
+      { name: "description", label: "Description", type: "textarea" },
+      { name: "amount", label: "Amount (₹)", type: "number", required: true },
+      { name: "expenseDate", label: "Date", type: "date" },
+    ],
+  },
+  cashbook: {
+    slug: "cashbook",
+    apiPath: "/api/cashbook",
+    label: "Cash Book",
+    columns: [
+      { key: "entryDate", label: "Date", format: (v) => formatDate(v) },
+      { key: "type", label: "Type", format: (v) => <StatusPill status={v} /> },
+      { key: "description", label: "Description" },
+      { key: "amount", label: "Amount", className: "text-right", format: (v) => formatINR(Number(v || 0)) },
+    ],
+    fields: [
+      { name: "type", label: "Type", type: "select", required: true, options: ["credit", "debit"] },
+      { name: "description", label: "Description", type: "textarea" },
+      { name: "amount", label: "Amount (₹)", type: "number", required: true },
+      { name: "entryDate", label: "Date", type: "date" },
+    ],
+  },
+  installations: {
+    slug: "installations",
+    apiPath: "/api/installations",
+    label: "Installations",
+    columns: [
+      { key: "customerName", label: "Customer" },
+      { key: "systemDescription", label: "System", className: "text-xs text-[#504d44]" },
+      { key: "installDate", label: "Install Date", format: (v) => formatDate(v) },
+      { key: "team", label: "Team" },
+      { key: "stage", label: "Stage", format: (v) => <StatusPill status={v} /> },
+    ],
+    fields: [
+      { name: "customerName", label: "Customer Name", type: "text", required: true },
+      { name: "systemDescription", label: "System Description", type: "textarea" },
+      { name: "installDate", label: "Install Date", type: "date" },
+      { name: "stage", label: "Stage", type: "select", options: ["scheduled", "in progress", "completed"] },
+      { name: "team", label: "Team / Engineer", type: "text" },
+      { name: "notes", label: "Notes", type: "textarea" },
+    ],
+  },
+  amc: {
+    slug: "amc",
+    apiPath: "/api/amc",
+    label: "AMC & Warranty",
+    columns: [
+      { key: "customerName", label: "Customer" },
+      { key: "system", label: "System", className: "text-xs text-[#504d44]" },
+      { key: "contractType", label: "Type", format: (v) => <StatusPill status={v} /> },
+      { key: "startDate", label: "Start", format: (v) => formatDate(v) },
+      { key: "expiryDate", label: "Expires", format: (v) => formatDate(v) },
+    ],
+    fields: [
+      { name: "customerName", label: "Customer Name", type: "text", required: true },
+      { name: "system", label: "System Description", type: "text" },
+      { name: "contractType", label: "Contract Type", type: "select", options: ["AMC", "warranty"] },
+      { name: "startDate", label: "Start Date", type: "date" },
+      { name: "expiryDate", label: "Expiry Date", type: "date" },
+    ],
+  },
+  employees: {
+    slug: "employees",
+    apiPath: "/api/employees",
+    label: "Employees",
+    columns: [
+      { key: "name", label: "Name" },
+      { key: "role", label: "Role" },
+      { key: "phone", label: "Phone", className: "font-mono text-xs" },
+      { key: "salary", label: "Salary", className: "text-right", format: (v) => formatINR(Number(v || 0)) },
+      { key: "joinDate", label: "Join Date", format: (v) => formatDate(v) },
+      { key: "active", label: "Status", format: (v) => (v ? <StatusPill status="active" /> : <StatusPill status="inactive" />) },
+    ],
+    fields: [
+      { name: "name", label: "Name", type: "text", required: true },
+      { name: "role", label: "Role / Designation", type: "text" },
+      { name: "phone", label: "Phone", type: "text" },
+      { name: "salary", label: "Salary (₹/month)", type: "number" },
+      { name: "joinDate", label: "Join Date", type: "date" },
+      { name: "active", label: "Active", type: "select", options: ["true", "false"] },
+    ],
+  },
 };
 
-export default async function ModulePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function ModulePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const info = APP_PAGES[slug] || { label: slug, color: "gray" };
+  const config = MODULE_CONFIGS[slug];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let data: Record<string, any>[] = [];
-  try {
-    const models: Record<string, string> = { enquiries: "enquiry", quotations: "quotation", invoices: "invoice", suppliers: "supplierOrder", expenses: "expense", cashbook: "cashBookEntry", installations: "installation", amc: "amcContract", employees: "employee" };
-    const model = models[slug];
-    if (model) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data = await (prisma as any)[model].findMany({ orderBy: { createdAt: "desc" }, take: 20 });
-    }
-  } catch {
-    data = [];
+  if (!config) {
+    return (
+      <div className="bg-white border border-[#e6e0d4] rounded-xl p-8 text-center">
+        <h2 className="font-serif text-lg text-[#504d44] mb-2">Page not found</h2>
+        <p className="text-sm text-[#787468]">Module &quot;{slug}&quot; does not exist.</p>
+      </div>
+    );
   }
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="font-serif text-lg">{info.label}</h2>
-        <button className="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-amber-700">
-          + Add New
-        </button>
-      </div>
-      <div className="bg-white border border-[#e6e0d4] rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          {data.length === 0 ? (
-            <div className="text-center py-16 text-sm text-[#787468]">
-              <h3 className="font-serif text-lg text-[#504d44] mb-2">No records yet</h3>
-              <p>Click &quot;+ Add New&quot; to create the first entry.</p>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[10px] text-[#787468] uppercase tracking-wider border-b border-[#e6e0d4]">
-                  {Object.keys(data[0] || {}).filter((k) => k !== "id" && k !== "createdAt").slice(0, 5).map((key) => (
-                    <th key={key} className="text-left p-3">{key.replace(/([A-Z])/g, " $1").trim()}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((row) => (
-                  <tr key={row.id} className="border-b border-[#ede8dc] hover:bg-amber-50/50">
-                    {Object.entries(row).filter(([k]) => k !== "id" && k !== "createdAt").slice(0, 5).map(([key, val]) => (
-                      <td key={key} className="p-3">{typeof val === "number" && key.toLowerCase().includes("amount") ? `₹${(val as number).toLocaleString("en-IN")}` : String(val ?? "—")}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const models: Record<string, string> = {
+    enquiries: "enquiry",
+    suppliers: "supplierOrder",
+    expenses: "expense",
+    cashbook: "cashBookEntry",
+    installations: "installation",
+    amc: "amcContract",
+    employees: "employee",
+  };
+  const modelName = models[slug];
+  let rows: Record<string, any>[] = [];
+  if (modelName) {
+    try {
+      rows = await (prisma as any)[modelName].findMany({ orderBy: { createdAt: "desc" }, take: 100 });
+    } catch {
+      rows = [];
+    }
+  }
+
+  // Convert active from boolean to "true"/"false" for the form on employees
+  if (slug === "employees") {
+    rows = rows.map((r) => ({ ...r, active: r.active ? "true" : "false" }));
+  }
+
+  return <CrudTable config={config} rows={rows} />;
 }
 
 export async function generateStaticParams() {
-  return Object.keys(APP_PAGES).map((slug) => ({ slug }));
+  return Object.keys(MODULE_CONFIGS).map((slug) => ({ slug }));
 }
