@@ -6,6 +6,7 @@ import { Modal } from "@/components/Modal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SearchInput } from "@/components/SearchInput";
 import { formatINR, formatDate } from "@/lib/format";
+import { MODULE_CONFIGS } from "@/components/moduleConfigs";
 
 export type FieldDef = {
   name: string;
@@ -76,15 +77,27 @@ function FormField({ field, value, onChange }: { field: FieldDef; value: any; on
   );
 }
 
-export function CrudTable({ config, rows }: { config: ModuleConfig; rows: Record<string, any>[] }) {
+export function CrudTable({ slug, rows }: { slug: string; rows: Record<string, any>[] }) {
+  const config = MODULE_CONFIGS[slug];
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, any> | null>(null);
-  const [form, setForm] = useState<Record<string, any>>(defaultEmptyValues(config.fields));
+  const [form, setForm] = useState<Record<string, any>>(() =>
+    config ? defaultEmptyValues(config.fields) : {}
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  if (!config) {
+    return (
+      <div className="bg-white border border-[#e6e0d4] rounded-xl p-8 text-center">
+        <h2 className="font-serif text-lg text-[#504d44] mb-2">Page not found</h2>
+        <p className="text-sm text-[#787468]">Module &quot;{slug}&quot; does not exist.</p>
+      </div>
+    );
+  }
 
   const filtered = search
     ? rows.filter((r) =>
