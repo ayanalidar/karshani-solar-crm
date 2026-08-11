@@ -45,9 +45,13 @@ export type ProformaData = {
 export async function ProformaView({
   data,
   kind,
+  autoPrint = false,
+  recordPrintUrl,
 }: {
   data: ProformaData;
   kind: "proforma" | "tax-invoice";
+  autoPrint?: boolean;
+  recordPrintUrl?: string;
 }) {
   const titleText = kind === "proforma" ? "proforma invoice" : "tax invoice";
   const docLabel = kind === "proforma" ? "Estimate Nos." : "Invoice No.";
@@ -395,7 +399,7 @@ export async function ProformaView({
       </div>
 
       {/* Print button (hidden when actually printing) */}
-      <PrintButton />
+      <PrintButton autoPrint={autoPrint} recordPrintUrl={recordPrintUrl} />
     </div>
   );
 }

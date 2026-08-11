@@ -5,8 +5,14 @@ import { fiscalYearPrefix } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function QuotationPdfPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function QuotationPdfPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ print?: string }>;
+}) {
   const { id } = await params;
+  const { print } = await searchParams;
+  const autoPrint = print === "true" || print === "1";
+
   const q = await prisma.quotation.findUnique({
     where: { id },
     include: { items: true },
@@ -14,7 +20,6 @@ export default async function QuotationPdfPage({ params }: { params: Promise<{ i
   if (!q) notFound();
 
   // Use fiscal-year numbering in the proforma (matches sample: 2026-27/210)
-  // Fall back to estimateNo if it already looks like a fiscal-year number.
   const fyPrefix = fiscalYearPrefix(new Date(q.quoteDate));
   const docNo = /\d{4}-\d{2}\/\d+/.test(q.estimateNo) ? q.estimateNo : `${fyPrefix}/${q.estimateNo.split("-").pop()}`;
 
@@ -39,5 +44,12 @@ export default async function QuotationPdfPage({ params }: { params: Promise<{ i
     grandTotal: q.grandTotal,
   };
 
-  return <ProformaView data={data} kind="proforma" />;
+  return (
+    <ProformaView
+      data={data}
+      kind="proforma"
+      autoPrint={autoPrint}
+      recordPrintUrl={`/api/quotations/${id}/print`}
+    />
+  );
 }

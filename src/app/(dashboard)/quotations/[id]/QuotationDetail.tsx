@@ -20,6 +20,8 @@ type Quotation = {
   grandTotal: number;
   quoteDate: string;
   status: string;
+  printedAt?: string | Date | null;
+  printCount?: number;
   items: Array<{
     id: string;
     itemName: string;
@@ -42,6 +44,11 @@ export function QuotationDetail({ quotation, baseUrl }: { quotation: Quotation; 
 
   const pdfUrl = `${baseUrl}/quotations/${quotation.id}/pdf`;
   const shareUrl = `${baseUrl}/quotations/${quotation.id}/pdf`;
+
+  // Print tracking — Quotation has been printed if printCount > 0
+  const isPrinted = (quotation.printCount || 0) > 0;
+  const printLabel = isPrinted ? "🖨 Reprint" : "🖨 Print";
+  const printUrl = `/quotations/${quotation.id}/pdf?print=true`;
 
   const waText = `Hello ${quotation.customerName}, here is your quotation ${quotation.estimateNo} for ${formatINR(quotation.grandTotal)}. View: ${shareUrl}`;
   const waNumber = quotation.customerPhone.replace(/[^0-9]/g, "");
@@ -91,9 +98,38 @@ export function QuotationDetail({ quotation, baseUrl }: { quotation: Quotation; 
           <h2 className="font-serif text-lg">
             {quotation.estimateNo}{" "}
             <span className="ml-2"><StatusPill status={quotation.status} /></span>
+            {/* Print status badge */}
+            {isPrinted ? (
+              <span
+                className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200"
+                title={`Last printed: ${quotation.printedAt ? formatDate(String(quotation.printedAt)) : "unknown"}`}
+              >
+                🖨 Printed {quotation.printCount}× · {quotation.printedAt ? formatDate(String(quotation.printedAt)) : ""}
+              </span>
+            ) : (
+              <span className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
+                Not printed yet
+              </span>
+            )}
           </h2>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Print / Reprint button — opens /pdf?print=true in new tab.
+              Auto-triggers window.print() on the PDF page + records the
+              print event (increments printCount + sets printedAt). */}
+          <a
+            href={printUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={`px-3 py-2 rounded-md text-sm font-semibold flex items-center gap-1.5 ${
+              isPrinted
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-amber-600 text-white hover:bg-amber-700"
+            }`}
+            title={isPrinted ? `Reprint — already printed ${quotation.printCount} time(s)` : "Print this quotation"}
+          >
+            {printLabel}
+          </a>
           <a
             href={waLink}
             target="_blank"
@@ -112,7 +148,7 @@ export function QuotationDetail({ quotation, baseUrl }: { quotation: Quotation; 
             href={`/quotations/${quotation.id}/pdf`}
             className="bg-white border border-[#e6e0d4] text-[#1c1915] px-3 py-2 rounded-md text-sm font-semibold hover:bg-[#faf6f0] flex items-center gap-1.5"
           >
-            <span>📄</span> PDF
+            <span>📄</span> View PDF
           </Link>
           <button
             onClick={() => setStatusModal(true)}

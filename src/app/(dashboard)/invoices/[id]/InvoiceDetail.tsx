@@ -19,6 +19,8 @@ type Invoice = {
   invoiceDate: string;
   dueDate: string;
   status: string;
+  printedAt?: string | Date | null;
+  printCount?: number;
   items: Array<{
     id: string;
     itemName: string;
@@ -41,6 +43,11 @@ export function InvoiceDetail({ invoice, baseUrl }: { invoice: Invoice; baseUrl:
   const waText = `Hello ${invoice.customerName}, here is invoice ${invoice.invoiceNo} for ${formatINR(invoice.grandTotal)}. View: ${shareUrl}`;
   const waNumber = invoice.customerName?.replace(/[^0-9]/g, "");
   const waLink = `https://wa.me/?text=${encodeURIComponent(waText)}`;
+
+  // Print tracking
+  const isPrinted = (invoice.printCount || 0) > 0;
+  const printLabel = isPrinted ? "🖨 Reprint" : "🖨 Print";
+  const printUrl = `/invoices/${invoice.id}/pdf?print=true`;
 
   // Email integration
   const emailSubject = `Invoice ${invoice.invoiceNo} from Karshani Enterprises — ${formatINR(invoice.grandTotal)}`;
@@ -74,9 +81,36 @@ export function InvoiceDetail({ invoice, baseUrl }: { invoice: Invoice; baseUrl:
           <h2 className="font-serif text-lg">
             {invoice.invoiceNo}{" "}
             <span className="ml-2"><StatusPill status={invoice.status} /></span>
+            {/* Print status badge */}
+            {isPrinted ? (
+              <span
+                className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200"
+                title={`Last printed: ${invoice.printedAt ? formatDate(String(invoice.printedAt)) : "unknown"}`}
+              >
+                🖨 Printed {invoice.printCount}× · {invoice.printedAt ? formatDate(String(invoice.printedAt)) : ""}
+              </span>
+            ) : (
+              <span className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">
+                Not printed yet
+              </span>
+            )}
           </h2>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Print / Reprint button — opens /pdf?print=true in new tab */}
+          <a
+            href={printUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={`px-3 py-2 rounded-md text-sm font-semibold flex items-center gap-1.5 ${
+              isPrinted
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-amber-600 text-white hover:bg-amber-700"
+            }`}
+            title={isPrinted ? `Reprint — already printed ${invoice.printCount} time(s)` : "Print this invoice"}
+          >
+            {printLabel}
+          </a>
           <a
             href={waLink}
             target="_blank"
@@ -95,7 +129,7 @@ export function InvoiceDetail({ invoice, baseUrl }: { invoice: Invoice; baseUrl:
             href={`/invoices/${invoice.id}/pdf`}
             className="bg-white border border-[#e6e0d4] text-[#1c1915] px-3 py-2 rounded-md text-sm font-semibold hover:bg-[#faf6f0] flex items-center gap-1.5"
           >
-            <span>📄</span> PDF
+            <span>📄</span> View PDF
           </Link>
           {invoice.status !== "paid" && (
             <button

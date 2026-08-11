@@ -4,8 +4,14 @@ import { ProformaView, type ProformaData } from "@/components/ProformaView";
 
 export const dynamic = "force-dynamic";
 
-export default async function InvoicePdfPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InvoicePdfPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ print?: string }>;
+}) {
   const { id } = await params;
+  const { print } = await searchParams;
+  const autoPrint = print === "true" || print === "1";
+
   const inv = await prisma.invoice.findUnique({
     where: { id },
     include: { items: true },
@@ -33,5 +39,12 @@ export default async function InvoicePdfPage({ params }: { params: Promise<{ id:
     grandTotal: inv.grandTotal,
   };
 
-  return <ProformaView data={data} kind="tax-invoice" />;
+  return (
+    <ProformaView
+      data={data}
+      kind="tax-invoice"
+      autoPrint={autoPrint}
+      recordPrintUrl={`/api/invoices/${id}/print`}
+    />
+  );
 }

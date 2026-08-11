@@ -79,6 +79,8 @@ model Quotation {
   customerId        String?  @map("customer_id")
   customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items             QuotationItem[]
+  printedAt         DateTime? @map("printed_at")
+  printCount        Int      @default(0) @map("print_count")
 
   @@map("quotations")
 }
@@ -112,6 +114,8 @@ model Invoice {
   customerId   String?  @map("customer_id")
   customer     Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items        InvoiceItem[]
+  printedAt    DateTime? @map("printed_at")
+  printCount   Int      @default(0) @map("print_count")
 
   @@map("invoices")
 }
