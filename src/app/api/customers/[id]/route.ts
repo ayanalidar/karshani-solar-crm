@@ -2,6 +2,16 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-check";
 import { NextResponse } from "next/server";
 
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauth = await requireAuth();
+  if (unauth) return unauth;
+  const { id } = await params;
+  // Use findFirst instead of findUnique (PrismaPg adapter workaround)
+  const customer = await prisma.customer.findFirst({ where: { id } });
+  if (!customer) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(customer);
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const unauth = await requireAuth();
   if (unauth) return unauth;

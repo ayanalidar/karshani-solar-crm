@@ -272,8 +272,8 @@ export function QuotationBuilder({ products, customers }: { products: Product[];
             + Add Line
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto max-w-full overscroll-contain">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="text-[10px] text-[#787468] uppercase tracking-wider border-b border-[#e6e0d4]">
                 <th className="text-left py-2 min-w-[280px]">Item (or pick product)</th>

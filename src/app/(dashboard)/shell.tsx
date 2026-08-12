@@ -95,7 +95,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href || "/"}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => {
+                  setMobileOpen(false);
+                  // Bust the Router Cache so the destination page fetches
+                  // fresh data instead of showing a stale cached version.
+                  // This fixes the "tab switching shows no data" issue.
+                  router.refresh();
+                }}
                 prefetch
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   pathname === item.href
