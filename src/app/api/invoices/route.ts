@@ -1,34 +1,13 @@
-import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-check";
 import { NextResponse } from "next/server";
+import { rawInsert, fetchAll, toCamel, toCamelArray } from "@/lib/raw-db";
 import { todayISO } from "@/lib/format";
 
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  // List view: fetch only invoice fields (no items) to reduce egress.
-  // Items are fetched separately on the detail page.
-  const invoices = await prisma.invoice.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      id: true,
-      invoiceNo: true,
-      customerName: true,
-      description: true,
-      subtotal: true,
-      gstTotal: true,
-      grandTotal: true,
-      invoiceDate: true,
-      dueDate: true,
-      status: true,
-      createdAt: true,
-      customerId: true,
-      printedAt: true,
-      printCount: true,
-    },
-  });
-  return NextResponse.json(invoices);
+  const rows = await fetchAll("invoices", "created_at.desc", 100);
+  return NextResponse.json(toCamelArray(rows));
 }
 
 export async function POST(request: Request) {
@@ -36,46 +15,47 @@ export async function POST(request: Request) {
   if (unauth) return unauth;
   const data = await request.json();
 
-  const count = await prisma.invoice.count();
+  const count = (await fetchAll("invoices", undefined, 1)).length;
   const invoiceNo = data.invoiceNo || `INV-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
-
   const items = Array.isArray(data.items) ? data.items : [];
 
   let subtotal = Number(data.subtotal || 0);
   let gstTotal = Number(data.gstTotal || 0);
   if (subtotal === 0 && items.length > 0) {
     subtotal = items.reduce((s: number, i: any) => s + Number(i.amount || i.quantity * i.unitPrice || 0), 0);
-    gstTotal = items.reduce(
-      (s: number, i: any) => s + (Number(i.amount || i.quantity * i.unitPrice || 0) * Number(i.gstPercentage || 0)) / 100,
-      0
-    );
+    gstTotal = items.reduce((s: number, i: any) => s + (Number(i.amount || i.quantity * i.unitPrice || 0) * Number(i.gstPercentage || 0)) / 100, 0);
   }
   const grandTotal = subtotal + gstTotal;
 
-  const invoice = await prisma.invoice.create({
-    data: {
-      invoiceNo,
-      customerName: String(data.customerName || "").trim(),
-      description: String(data.description || "").trim(),
-      subtotal,
-      gstTotal,
-      grandTotal,
-      invoiceDate: String(data.invoiceDate || todayISO()),
-      dueDate: String(data.dueDate || ""),
-      status: String(data.status || "due").trim(),
-      ...(data.customerId && { customerId: String(data.customerId) }),
-      items: {
-        create: items.map((i: any) => ({
-          itemName: String(i.itemName || "").trim(),
-          hsnCode: String(i.hsnCode || "").trim(),
-          quantity: Number(i.quantity || 1),
-          unitPrice: Number(i.unitPrice || 0),
-          gstPercentage: Number(i.gstPercentage || 0),
-          amount: Number(i.amount || Number(i.quantity || 1) * Number(i.unitPrice || 0)),
-        })),
-      },
-    },
-    include: { items: true },
-  });
-  return NextResponse.json(invoice, { status: 201 });
+  const insertData = {
+    invoice_no: invoiceNo,
+    customer_name: String(data.customerName || "").trim(),
+    description: String(data.description || "").trim(),
+    subtotal,
+    gst_total: gstTotal,
+    grand_total: grandTotal,
+    invoice_date: String(data.invoiceDate || todayISO()),
+    due_date: String(data.dueDate || ""),
+    status: String(data.status || "due").trim(),
+    ...(data.customerId && { customer_id: String(data.customerId) }),
+  };
+
+  const row = await rawInsert("invoices", insertData);
+  if (!row) return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
+
+  // Insert items
+  const invoiceId = row.id;
+  for (const item of items) {
+    await rawInsert("invoice_items", {
+      invoice_id: invoiceId,
+      item_name: String(item.itemName || "").trim(),
+      hsn_code: String(item.hsnCode || "").trim(),
+      quantity: Number(item.quantity || 1),
+      unit_price: Number(item.unitPrice || 0),
+      gst_percentage: Number(item.gstPercentage || 0),
+      amount: Number(item.amount || Number(item.quantity || 1) * Number(item.unitPrice || 0)),
+    });
+  }
+
+  return NextResponse.json(toCamel(row), { status: 201 });
 }

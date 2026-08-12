@@ -1,18 +1,13 @@
-import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-check";
 import { NextResponse } from "next/server";
-import { rawInsert, rawSelect, toSnake, toCamel, toCamelArray } from "@/lib/raw-db";
+import { rawInsert, fetchAll, toCamel, toCamelArray } from "@/lib/raw-db";
 import { todayISO } from "@/lib/format";
 
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  let contracts = await prisma.amcContract.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
-  if (!contracts || contracts.length === 0) {
-    const rows = await rawSelect("amc_contracts", "created_at.desc", 100);
-    if (rows) contracts = toCamelArray(rows) as any;
-  }
-  return NextResponse.json(contracts || []);
+  const rows = await fetchAll("amc_contracts", "created_at.desc", 100);
+  return NextResponse.json(toCamelArray(rows));
 }
 
 export async function POST(request: Request) {
@@ -21,18 +16,14 @@ export async function POST(request: Request) {
   const data = await request.json();
 
   const insertData = {
-    customerName: String(data.customerName || "").trim(),
+    customer_name: String(data.customerName || "").trim(),
     system: String(data.system || "").trim(),
-    contractType: String(data.contractType || "AMC").trim(),
-    startDate: String(data.startDate || todayISO()),
-    expiryDate: String(data.expiryDate || todayISO()),
+    contract_type: String(data.contractType || "AMC").trim(),
+    start_date: String(data.startDate || todayISO()),
+    expiry_date: String(data.expiryDate || todayISO()),
   };
 
-  let contract = await prisma.amcContract.create({ data: insertData });
-  if (!contract) {
-    const row = await rawInsert("amc_contracts", toSnake(insertData));
-    if (!row) return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
-    contract = toCamel(row) as any;
-  }
-  return NextResponse.json(contract, { status: 201 });
+  const row = await rawInsert("amc_contracts", insertData);
+  if (!row) return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
+  return NextResponse.json(toCamel(row), { status: 201 });
 }

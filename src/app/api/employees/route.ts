@@ -1,18 +1,18 @@
-import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-check";
 import { NextResponse } from "next/server";
-import { rawInsert, rawSelect, toSnake, toCamel, toCamelArray } from "@/lib/raw-db";
+import { rawInsert, fetchAll, toCamel, toCamelArray } from "@/lib/raw-db";
 import { todayISO } from "@/lib/format";
 
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  let employees = await prisma.employee.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
-  if (!employees || employees.length === 0) {
-    const rows = await rawSelect("employees", "created_at.desc", 100);
-    if (rows) employees = toCamelArray(rows) as any;
-  }
-  return NextResponse.json(employees || []);
+  const rows = await fetchAll("employees", "created_at.desc", 100);
+  // Convert active from boolean to "true"/"false" for the form
+  const result = toCamelArray(rows).map((e: any) => ({
+    ...e,
+    active: e.active ? "true" : "false",
+  }));
+  return NextResponse.json(result);
 }
 
 export async function POST(request: Request) {
@@ -25,15 +25,11 @@ export async function POST(request: Request) {
     role: String(data.role || "").trim(),
     phone: String(data.phone || "").trim(),
     salary: Number(data.salary || 0),
-    joinDate: String(data.joinDate || todayISO()),
+    join_date: String(data.joinDate || todayISO()),
     active: data.active !== undefined ? Boolean(data.active) : true,
   };
 
-  let employee = await prisma.employee.create({ data: insertData });
-  if (!employee) {
-    const row = await rawInsert("employees", toSnake(insertData));
-    if (!row) return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
-    employee = toCamel(row) as any;
-  }
-  return NextResponse.json(employee, { status: 201 });
+  const row = await rawInsert("employees", insertData);
+  if (!row) return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
+  return NextResponse.json(toCamel(row), { status: 201 });
 }

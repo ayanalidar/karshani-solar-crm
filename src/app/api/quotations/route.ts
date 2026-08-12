@@ -1,35 +1,13 @@
-import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-check";
 import { NextResponse } from "next/server";
+import { rawInsert, fetchAll, toCamel, toCamelArray } from "@/lib/raw-db";
 import { todayISO } from "@/lib/format";
 
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  // List view: fetch only quotation fields (no items) to reduce egress.
-  // Items are fetched separately on the detail page.
-  const quotations = await prisma.quotation.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      id: true,
-      estimateNo: true,
-      customerName: true,
-      customerPhone: true,
-      customerLocation: true,
-      systemDescription: true,
-      subtotal: true,
-      gstTotal: true,
-      grandTotal: true,
-      quoteDate: true,
-      status: true,
-      createdAt: true,
-      customerId: true,
-      printedAt: true,
-      printCount: true,
-    },
-  });
-  return NextResponse.json(quotations);
+  const rows = await fetchAll("quotations", "created_at.desc", 100);
+  return NextResponse.json(toCamelArray(rows));
 }
 
 export async function POST(request: Request) {
@@ -37,49 +15,48 @@ export async function POST(request: Request) {
   if (unauth) return unauth;
   const data = await request.json();
 
-  // Generate next estimate number: EST-YYYY-NNNN
-  const count = await prisma.quotation.count();
-  const estimateNo = `EST-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
-
+  const count = (await fetchAll("quotations", undefined, 1)).length;
+  const estimateNo = data.estimateNo || `EST-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
   const items = Array.isArray(data.items) ? data.items : [];
 
-  // Compute totals if not provided
   let subtotal = Number(data.subtotal || 0);
   let gstTotal = Number(data.gstTotal || 0);
   if (subtotal === 0 && items.length > 0) {
     subtotal = items.reduce((s: number, i: any) => s + Number(i.amount || i.quantity * i.unitPrice || 0), 0);
-    gstTotal = items.reduce(
-      (s: number, i: any) => s + (Number(i.amount || i.quantity * i.unitPrice || 0) * Number(i.gstPercentage || 0)) / 100,
-      0
-    );
+    gstTotal = items.reduce((s: number, i: any) => s + (Number(i.amount || i.quantity * i.unitPrice || 0) * Number(i.gstPercentage || 0)) / 100, 0);
   }
   const grandTotal = subtotal + gstTotal;
 
-  const quotation = await prisma.quotation.create({
-    data: {
-      estimateNo,
-      customerName: String(data.customerName || "").trim(),
-      customerPhone: String(data.customerPhone || "").trim(),
-      customerLocation: String(data.customerLocation || "").trim(),
-      systemDescription: String(data.systemDescription || "").trim(),
-      subtotal,
-      gstTotal,
-      grandTotal,
-      quoteDate: String(data.quoteDate || todayISO()),
-      status: String(data.status || "sent").trim(),
-      ...(data.customerId && { customerId: String(data.customerId) }),
-      items: {
-        create: items.map((i: any) => ({
-          itemName: String(i.itemName || "").trim(),
-          hsnCode: String(i.hsnCode || "").trim(),
-          quantity: Number(i.quantity || 1),
-          unitPrice: Number(i.unitPrice || 0),
-          gstPercentage: Number(i.gstPercentage || 0),
-          amount: Number(i.amount || Number(i.quantity || 1) * Number(i.unitPrice || 0)),
-        })),
-      },
-    },
-    include: { items: true },
-  });
-  return NextResponse.json(quotation, { status: 201 });
+  const insertData = {
+    estimate_no: estimateNo,
+    customer_name: String(data.customerName || "").trim(),
+    customer_phone: String(data.customerPhone || "").trim(),
+    customer_location: String(data.customerLocation || "").trim(),
+    system_description: String(data.systemDescription || "").trim(),
+    subtotal,
+    gst_total: gstTotal,
+    grand_total: grandTotal,
+    quote_date: String(data.quoteDate || todayISO()),
+    status: String(data.status || "sent").trim(),
+    ...(data.customerId && { customer_id: String(data.customerId) }),
+  };
+
+  const row = await rawInsert("quotations", insertData);
+  if (!row) return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
+
+  // Insert items
+  const quotationId = row.id;
+  for (const item of items) {
+    await rawInsert("quotation_items", {
+      quotation_id: quotationId,
+      item_name: String(item.itemName || "").trim(),
+      hsn_code: String(item.hsnCode || "").trim(),
+      quantity: Number(item.quantity || 1),
+      unit_price: Number(item.unitPrice || 0),
+      gst_percentage: Number(item.gstPercentage || 0),
+      amount: Number(item.amount || Number(item.quantity || 1) * Number(item.unitPrice || 0)),
+    });
+  }
+
+  return NextResponse.json(toCamel(row), { status: 201 });
 }
