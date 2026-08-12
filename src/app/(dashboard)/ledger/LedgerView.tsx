@@ -363,7 +363,7 @@ export function LedgerView() {
                       <td className="p-3 text-xs">{formatDate(t.transactionDate)}</td>
                       <td className="p-3"><span className="font-semibold">{t.partyName}</span><span className="text-[10px] text-[#787468] dark:text-[#a8a29e] ml-1">({t.partyType})</span></td>
                       <td className="p-3"><span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${t.type === "credit" ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900" : "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-900"}`}>{t.type === "credit" ? "CREDIT" : "PAYMENT"}</span></td>
-                      <td className="p-3 text-xs">{(PAYMENT_METHODS.find(m => m.value === (t.paymentMethod || "cash"))?.label) || t.paymentMethod || "Cash"}</td>
+                      <td className="p-3 text-xs">{t.type === "credit" ? "Due" : ((PAYMENT_METHODS.find(m => m.value === (t.paymentMethod || "cash"))?.label) || t.paymentMethod || "Cash")}</td>
                       <td className="p-3 text-xs text-[#504d44] dark:text-[#d6cfc5]">{t.description || "—"}</td>
                       <td className={`p-3 text-right font-semibold ${t.type === "credit" ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>{t.type === "credit" ? "+" : "−"}{formatINR(t.amount)}</td>
                     </tr>
@@ -497,7 +497,7 @@ export function LedgerView() {
                         <tr key={t.id} className="border-b border-[#ede8dc] dark:border-[#2e2a25]">
                           <td className="p-2 text-[10px]">{formatDate(t.transactionDate)}</td>
                           <td className="p-2"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${t.type === "credit" ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400" : "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400"}`}>{t.type === "credit" ? "CREDIT" : "PAID"}</span></td>
-                          <td className="p-2 text-[10px]">{t.paymentMethod || "cash"}</td>
+                          <td className="p-2 text-[10px]">{t.type === "credit" ? "Due" : (t.paymentMethod || "cash")}</td>
                           <td className="p-2 text-[10px] text-[#504d44] dark:text-[#d6cfc5]">{t.description || "—"}</td>
                           <td className={`p-2 text-right font-semibold text-[10px] ${t.type === "credit" ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>{t.type === "credit" ? "+" : "−"}{formatINR(t.amount)}</td>
                         </tr>

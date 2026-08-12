@@ -36,6 +36,9 @@ export type ProformaData = {
 
   // Status (shown on invoice, not proforma)
   status?: string;
+  // Balance info for tax invoices with partial payments
+  totalPaid?: number;
+  balanceDue?: number;
 };
 
 // Shared layout used for both proforma invoice (quotation) and tax invoice.
@@ -326,6 +329,24 @@ export async function ProformaView({
                   {formatINRNumber(data.grandTotal)}
                 </td>
               </tr>
+              {(data.totalPaid ?? 0) > 0 && (
+                <>
+                  <tr>
+                    <td style={{ textAlign: "left", color: "#16a34a" }}>Paid</td>
+                    <td className="right" style={{ color: "#16a34a" }}>
+                      {formatINRNumber(data.totalPaid || 0)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ textAlign: "left", fontWeight: "bold", color: data.balanceDue ? "#dc2626" : "#16a34a" }}>
+                      {data.balanceDue ? "Balance Due" : "Fully Paid"}
+                    </td>
+                    <td className="right" style={{ fontWeight: "bold", color: data.balanceDue ? "#dc2626" : "#16a34a" }}>
+                      {formatINRNumber(data.balanceDue || 0)}
+                    </td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </div>

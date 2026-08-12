@@ -21,6 +21,11 @@ export default async function InvoicePdfPage({ params, searchParams }: {
   const inv = toCamel(row);
   const items = itemRows.map((i: any) => toCamel(i));
 
+  // Fetch linked transactions to calculate balance
+  const txns = await fetchBy("transactions", "reference_id", id, "transaction_date.desc", 50);
+  const totalPaid = txns.filter((t: any) => t.type === "debit").reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+  const balanceDue = Math.max(0, Number(inv.grandTotal) - totalPaid);
+
   const data: ProformaData = {
     docNo: inv.invoiceNo,
     date: inv.invoiceDate,
@@ -28,6 +33,8 @@ export default async function InvoicePdfPage({ params, searchParams }: {
     customerName: inv.customerName,
     systemDescription: inv.description,
     status: inv.status,
+    totalPaid,
+    balanceDue,
     items: items.map((i: any) => ({
       id: i.id,
       itemName: i.itemName,

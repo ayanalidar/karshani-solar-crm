@@ -21,6 +21,8 @@ type Invoice = {
   status: string;
   printedAt?: string | Date | null;
   printCount?: number;
+  balanceDue?: number;
+  totalPaid?: number;
   items: Array<{
     id: string;
     itemName: string;
@@ -81,6 +83,16 @@ export function InvoiceDetail({ invoice, baseUrl }: { invoice: Invoice; baseUrl:
           <h2 className="font-serif text-lg">
             {invoice.invoiceNo}{" "}
             <span className="ml-2"><StatusPill status={invoice.status} /></span>
+            {/* Balance due badge — shows outstanding amount */}
+            {(invoice.balanceDue ?? 0) > 0 ? (
+              <span className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900">
+                Due {formatINR(invoice.balanceDue || 0)}
+              </span>
+            ) : (invoice.totalPaid ?? 0) > 0 ? (
+              <span className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900">
+                Paid {formatINR(invoice.totalPaid || 0)} · Balance ₹0
+              </span>
+            ) : null}
             {/* Print status badge */}
             {isPrinted ? (
               <span
@@ -191,6 +203,19 @@ export function InvoiceDetail({ invoice, baseUrl }: { invoice: Invoice; baseUrl:
             <div className="flex justify-between text-sm py-0.5"><span>Subtotal</span><span>{formatINR(invoice.subtotal)}</span></div>
             <div className="flex justify-between text-sm py-0.5 text-[#504d44]"><span>GST</span><span>{formatINR(invoice.gstTotal)}</span></div>
             <div className="flex justify-between font-serif text-base py-2 border-t border-[#e6e0d4] mt-1"><span>Grand Total</span><span>{formatINR(invoice.grandTotal)}</span></div>
+            {(invoice.totalPaid ?? 0) > 0 && (
+              <>
+                <div className="flex justify-between text-sm py-0.5 text-green-700 dark:text-green-400"><span>Paid</span><span>{formatINR(invoice.totalPaid || 0)}</span></div>
+                <div className="flex justify-between font-semibold text-sm py-1 border-t border-[#e6e0d4] mt-1">
+                  <span className={invoice.balanceDue ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}>
+                    {invoice.balanceDue ? "Balance Due" : "Fully Paid"}
+                  </span>
+                  <span className={invoice.balanceDue ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}>
+                    {formatINR(invoice.balanceDue || 0)}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
