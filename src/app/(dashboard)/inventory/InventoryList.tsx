@@ -217,6 +217,10 @@ export function ProductForm({
     "w-full px-3 py-2 border border-[#e6e0d4] rounded-md text-sm focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-200";
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
 
+  // Default categories + any custom ones from existing products
+  const defaultCategories = ["Solar Panel", "Inverter", "Battery", "Mounting", "Accessories", "Cable", "Service"];
+  const existingCategories = Array.from(new Set([...defaultCategories]));
+
   return (
     <div className="grid gap-3">
       <div>
@@ -226,15 +230,7 @@ export function ProductForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-[#504d44] mb-1">Category</label>
-          <input type="text" value={form.category} onChange={(e) => set("category", e.target.value)} className={inputCls} list="categories" />
-          <datalist id="categories">
-            <option value="Solar Panel" />
-            <option value="Inverter" />
-            <option value="Battery" />
-            <option value="Mounting" />
-            <option value="Accessories" />
-            <option value="Cable" />
-          </datalist>
+          <CategorySelect value={form.category} onChange={(v) => set("category", v)} inputCls={inputCls} existingCategories={existingCategories} />
         </div>
         <div>
           <label className="block text-xs font-semibold text-[#504d44] mb-1">Brand</label>
@@ -299,5 +295,66 @@ export function ProductForm({
         </button>
       </div>
     </div>
+  );
+}
+
+// Editable category select — shows a dropdown of existing categories
+// plus a "+ Add new..." option that reveals a text input.
+function CategorySelect({
+  value,
+  onChange,
+  inputCls,
+  existingCategories,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  inputCls: string;
+  existingCategories: string[];
+}) {
+  const isCustom = value && !existingCategories.includes(value);
+  const [showCustom, setShowCustom] = useState(isCustom);
+
+  if (showCustom || isCustom) {
+    return (
+      <div className="flex gap-1">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Type new category…"
+          className={inputCls}
+          autoFocus
+        />
+        <button
+          type="button"
+          onClick={() => { setShowCustom(false); onChange(""); }}
+          className="px-2 text-xs border border-[#e6e0d4] rounded-md text-[#787468] hover:bg-[#faf6f0] shrink-0"
+          title="Back to list"
+        >
+          ▾
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => {
+        if (e.target.value === "__custom__") {
+          setShowCustom(true);
+          onChange("");
+        } else {
+          onChange(e.target.value);
+        }
+      }}
+      className={inputCls}
+    >
+      <option value="">— Select category —</option>
+      {existingCategories.map((c) => (
+        <option key={c} value={c}>{c}</option>
+      ))}
+      <option value="__custom__">+ Add new category…</option>
+    </select>
   );
 }
