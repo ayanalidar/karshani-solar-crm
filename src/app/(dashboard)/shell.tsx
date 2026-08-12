@@ -8,7 +8,7 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { useTheme } from "@/components/ThemeProvider";
 import {
   DashboardIcon, InventoryIcon, BillingIcon, CustomersIcon, EnquiriesIcon,
-  QuotationsIcon, InvoicesIcon, SuppliersIcon, ExpensesIcon, CashbookIcon,
+  QuotationsIcon, InvoicesIcon, SuppliersIcon, ExpensesIcon,
   ReportIcon, InstallationsIcon, AmcIcon, EmployeesIcon, UsersIcon, SettingsIcon,
   LogoutIcon, MenuIcon, SunIcon, MoonIcon, LedgerIcon
 } from "@/components/Icons";
@@ -35,7 +35,6 @@ const NAV_ITEMS: NavItem[] = [
   { type: "group", label: "Finance" },
   { href: "/ledger", label: "Ledger", icon: LedgerIcon },
   { href: "/expenses", label: "Expenses", icon: ExpensesIcon },
-  { href: "/cashbook", label: "Cash Book", icon: CashbookIcon },
   { href: "/reports/gst", label: "GST Report", icon: ReportIcon },
   { type: "group", label: "Operations" },
   { href: "/installations", label: "Installations", icon: InstallationsIcon },
