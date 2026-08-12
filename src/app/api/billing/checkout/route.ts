@@ -85,10 +85,26 @@ export async function POST(request: Request) {
     return r;
   };
 
-  // Credit the full invoice amount (customer owes this)
+  // If credit customer (walk-in), create a customer record + link it
+  let linkedCustomerId = data.customerId ? String(data.customerId) : null;
+  if (!linkedCustomerId && data.customerPhone && data.customerLocation) {
+    // Create a new customer record for the credit customer
+    const newCust = await rawInsert("customers", {
+      name: customerName,
+      phone: String(data.customerPhone),
+      city: String(data.customerLocation),
+      gstin: "",
+      total_purchases: grandTotal,
+    });
+    if (newCust) {
+      linkedCustomerId = newCust.id;
+    }
+  }
+
+  // Credit the full invoice amount (customer owes this) — linked to customer
   await safeInsert({
     party_type: "customer",
-    party_id: data.customerId ? String(data.customerId) : null,
+    party_id: linkedCustomerId,
     party_name: customerName,
     type: "credit",
     amount: grandTotal,
@@ -99,10 +115,9 @@ export async function POST(request: Request) {
     payment_method: "cash",
   });
 
-  // Process split payments — data.payments is an array of {method, amount}
+  // Process payments
   const payments = Array.isArray(data.payments) ? data.payments : [];
   if (payments.length === 0 && data.paidAmount) {
-    // Backward compat: single payment
     payments.push({ method: data.paymentMethod || "cash", amount: Number(data.paidAmount) });
   }
   if (data.financeAmount > 0) {
@@ -113,7 +128,7 @@ export async function POST(request: Request) {
     if (p.amount > 0) {
       await safeInsert({
         party_type: "customer",
-        party_id: data.customerId ? String(data.customerId) : null,
+        party_id: linkedCustomerId,
         party_name: customerName,
         type: "debit",
         amount: Number(p.amount),
@@ -123,24 +138,6 @@ export async function POST(request: Request) {
         reference_id: invoice.id,
         payment_method: p.method,
       });
-    }
-  }
-
-  // Store customer phone/location if provided (for credit customers)
-  if (data.customerPhone || data.customerLocation) {
-    // Update or create customer record with contact info
-    if (data.customerId) {
-      await rawInsert("transactions", {
-        party_type: "customer",
-        party_id: String(data.customerId),
-        party_name: customerName,
-        type: "debit",
-        amount: 0,
-        description: `Contact: ${data.customerPhone || ""} ${data.customerLocation || ""}`,
-        transaction_date: todayISO(),
-        reference_type: "manual",
-        payment_method: "cash",
-      }).catch(() => null);
     }
   }
 
