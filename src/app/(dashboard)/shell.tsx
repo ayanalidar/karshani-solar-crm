@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
-import { useRefreshOnMount } from "@/hooks/useRefreshOnMount";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { useTheme } from "@/components/ThemeProvider";
 import {
@@ -58,10 +57,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // table triggers a debounced router.refresh() so lists + KPIs update
   // instantly without manual page reload.
   useRealtimeRefresh();
-
-  // Refresh router cache on navigation — fixes "data not visible until
-  // manual refresh" issue when switching between sidebar tabs.
-  useRefreshOnMount();
 
   // Fetch badges on mount + every 60s
   useEffect(() => {

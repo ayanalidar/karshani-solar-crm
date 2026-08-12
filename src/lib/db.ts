@@ -1,10 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
-const adapter = new PrismaPg({ connectionString: connectionString || "postgresql://localhost:5432/postgres" });
+// Supabase Session pooler allows max 15 concurrent connections.
+// We limit the pg Pool to max 3 connections to avoid exhausting the pool.
+const pool = new Pool({
+  connectionString: connectionString || "postgresql://localhost:5432/postgres",
+  max: 3,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+const adapter = new PrismaPg(pool);
 const baseClient = new PrismaClient({ adapter });
 
 // Detect async functions without relying on Function.constructor.name
@@ -69,4 +78,7 @@ function safeFallback(methodName: string): unknown {
 
 export const prisma = globalForPrisma.prisma || safeWrap(baseClient);
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Always cache on globalThis (not just dev) — prevents creating multiple
+// Prisma clients on Vercel serverless warm starts, which would exhaust
+// the Supabase connection pool.
+globalForPrisma.prisma = prisma;

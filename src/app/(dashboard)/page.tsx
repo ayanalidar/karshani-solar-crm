@@ -1,30 +1,24 @@
+import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { formatINR, formatINRShort, formatDate, daysFromToday } from "@/lib/format";
 import { StatusPill } from "@/components/StatusPill";
-import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function DashboardPage() {
-  // Fetch via /api/dashboard (more reliable on Vercel than direct Prisma)
-  const h = await headers();
-  const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
-  const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
-  const cookie = h.get("cookie") || "";
-
-  const res = await fetch(`${proto}://${host}/api/dashboard`, {
-    headers: { cookie },
-    cache: "no-store",
-  });
-  const data: any = res.ok ? await res.json() : { products: [], customers: [], enquiries: [], quotations: [], invoices: [], installations: [], amcContracts: [] };
-  const products: any[] = data.products || [];
-  const customers: any[] = data.customers || [];
-  const enquiries: any[] = data.enquiries || [];
-  const quotations: any[] = data.quotations || [];
-  const invoices: any[] = data.invoices || [];
-  const installations: any[] = data.installations || [];
-  const amcContracts: any[] = data.amcContracts || [];
+  const [products, customers, enquiries, quotations, invoices, installations, amcContracts] = await Promise.all([
+    prisma.product.findMany({ select: { id: true, name: true, category: true, unitPrice: true, stockQuantity: true } }),
+    prisma.customer.findMany({ select: { id: true } }),
+    prisma.enquiry.findMany({ orderBy: { createdAt: "desc" }, take: 5, select: { id: true, customerName: true, systemDescription: true, status: true } }),
+    prisma.quotation.findMany({ where: { status: "sent" }, select: { id: true, grandTotal: true } }),
+    prisma.invoice.findMany({
+      orderBy: { createdAt: "desc" },
+      select: { id: true, invoiceNo: true, customerName: true, grandTotal: true, invoiceDate: true, status: true, createdAt: true },
+    }),
+    prisma.installation.findMany({ orderBy: { createdAt: "desc" }, take: 5, select: { id: true, customerName: true, systemDescription: true, installDate: true, team: true, stage: true } }),
+    prisma.amcContract.findMany({ select: { id: true, customerName: true, system: true, expiryDate: true } }),
+  ]);
 
   // Real analytics (D)
   const now = new Date();
