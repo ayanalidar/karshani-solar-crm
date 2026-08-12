@@ -1,71 +1,76 @@
-import { Pool } from "pg";
+// Raw DB operations via Supabase REST API (PostgREST).
+// Uses HTTPS (port 443) — bypasses the Supabase connection pool entirely.
+// The Session pooler (port 5432) allows only 15 connections which get
+// exhausted on Vercel serverless. REST API has no such limit.
 
-// Raw pg Pool for write operations (create/update/delete).
-// Bypasses Prisma entirely — more reliable on Vercel serverless
-// because it doesn't go through the safeWrap proxy.
-let pool: Pool | null = null;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-function getPool(): Pool {
-  if (pool) return pool;
-  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
-  pool = new Pool({
-    connectionString: connectionString || "postgresql://localhost:5432/postgres",
-    max: 2,
-    idleTimeoutMillis: 20000,
-    connectionTimeoutMillis: 10000,
-  });
-  return pool;
+function getHeaders() {
+  return {
+    apikey: SERVICE_ROLE,
+    Authorization: `Bearer ${SERVICE_ROLE}`,
+    "Content-Type": "application/json",
+    Prefer: "return=representation",
+  };
 }
 
-// Generic INSERT helper — returns the inserted row.
+// Generic INSERT via Supabase REST API — returns the inserted row.
 export async function rawInsert(table: string, data: Record<string, any>): Promise<Record<string, any> | null> {
-  const p = getPool();
-  const columns = Object.keys(data);
-  const values = Object.values(data);
-  const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
-  const colList = columns.join(", ");
-
+  if (!SUPABASE_URL || !SERVICE_ROLE) {
+    console.error("[rawInsert] Missing SUPABASE_URL or SERVICE_ROLE_KEY");
+    return null;
+  }
   try {
-    const res = await p.query(
-      `INSERT INTO ${table} (${colList}) VALUES (${placeholders}) RETURNING *`,
-      values
-    );
-    return res.rows[0] || null;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error(`[rawInsert] ${table}: ${res.status} ${txt.slice(0, 200)}`);
+      return null;
+    }
+    const rows = await res.json();
+    return (rows && rows[0]) || null;
   } catch (err: any) {
     console.error(`[rawInsert] ${table} failed:`, err?.message);
     return null;
   }
 }
 
-// Generic UPDATE helper — returns the updated row.
+// Generic UPDATE via Supabase REST API.
 export async function rawUpdate(
   table: string,
   id: string,
   data: Record<string, any>
 ): Promise<Record<string, any> | null> {
-  const p = getPool();
-  const columns = Object.keys(data);
-  const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(", ");
-  const values = [...Object.values(data), id];
-
+  if (!SUPABASE_URL || !SERVICE_ROLE) return null;
   try {
-    const res = await p.query(
-      `UPDATE ${table} SET ${setClause} WHERE id = $${columns.length + 1} RETURNING *`,
-      values
-    );
-    return res.rows[0] || null;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: "PATCH",
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return (rows && rows[0]) || null;
   } catch (err: any) {
     console.error(`[rawUpdate] ${table} failed:`, err?.message);
     return null;
   }
 }
 
-// Generic DELETE helper.
+// Generic DELETE via Supabase REST API.
 export async function rawDelete(table: string, id: string): Promise<boolean> {
-  const p = getPool();
+  if (!SUPABASE_URL || !SERVICE_ROLE) return false;
   try {
-    await p.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
-    return true;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    return res.ok;
   } catch (err: any) {
     console.error(`[rawDelete] ${table} failed:`, err?.message);
     return false;
