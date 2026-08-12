@@ -55,15 +55,10 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<{ invoiceNo: string; invoiceId: string } | null>(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
-  // Split payment: each method can be checked + has an amount
-  const [splitPayments, setSplitPayments] = useState<Record<string, { checked: boolean; amount: number }>>({
-    cash: { checked: false, amount: 0 },
-    upi: { checked: false, amount: 0 },
-    dbt: { checked: false, amount: 0 },
-    bank_finance: { checked: false, amount: 0 },
-    cheque: { checked: false, amount: 0 },
-    credit: { checked: false, amount: 0 },
-  });
+  // Payment: select ONE method (radio) + optional Credit checkbox
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [hasCredit, setHasCredit] = useState(false);
 
   const filteredProducts = useMemo(() => {
     if (!search) return products;
@@ -104,12 +99,9 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
     ? customers.find((c) => c.id === customerId)?.name || ""
     : walkInName.trim() || "Walk-in Customer";
 
-  // Calculate total paid from split payments (excluding credit)
-  const totalPaid = Object.entries(splitPayments)
-    .filter(([method, sp]) => sp.checked && method !== "credit")
-    .reduce((s, [, sp]) => s + sp.amount, 0);
-  const creditAmount = splitPayments.credit.checked ? splitPayments.credit.amount : 0;
-  const balance = grandTotal - totalPaid - creditAmount;
+  // Credit = whatever's left after the paid amount
+  const creditAmount = hasCredit ? Math.max(0, grandTotal - paidAmount) : 0;
+  const balance = grandTotal - paidAmount;
 
   const checkout = async () => {
     setCheckingOut(true);
@@ -119,16 +111,20 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
       if (cart.length === 0) { setError("Cart is empty"); setCheckingOut(false); return; }
 
       // If credit is selected, name + phone + location are mandatory
-      if (splitPayments.credit.checked && (!walkInName.trim() || !walkInPhone.trim() || !walkInLocation.trim())) {
+      if (hasCredit && (!walkInName.trim() || !walkInPhone.trim() || !walkInLocation.trim())) {
         setError("For credit: Customer name, phone, and location are required");
         setCheckingOut(false);
         return;
       }
 
-      // Build payments array from checked split payments
-      const payments = Object.entries(splitPayments)
-        .filter(([, sp]) => sp.checked && sp.amount > 0)
-        .map(([method, sp]) => ({ method, amount: sp.amount }));
+      // Build payments: the paid amount + credit (if any)
+      const payments = [];
+      if (paidAmount > 0) {
+        payments.push({ method: paymentMethod, amount: paidAmount });
+      }
+      // Credit is NOT a payment — it's the unpaid balance. The API creates
+      // a credit transaction for the full invoice amount + debit for the
+      // paid amount. The difference stays as outstanding.
 
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -151,7 +147,8 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
       setCart([]);
       setWalkInName(""); setWalkInPhone(""); setWalkInLocation("");
       setCustomerId("");
-      setSplitPayments({ cash: {checked:false,amount:0}, upi:{checked:false,amount:0}, dbt:{checked:false,amount:0}, bank_finance:{checked:false,amount:0}, cheque:{checked:false,amount:0}, credit:{checked:false,amount:0} });
+      setPaidAmount(0);
+      setHasCredit(false);
       setShowPaymentOptions(false);
       router.refresh();
     } catch (e: any) {
@@ -308,7 +305,7 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
 
           {error && <div className="text-red-600 text-xs bg-red-50 border border-red-200 px-2 py-1.5 rounded mt-2">{error}</div>}
 
-          {/* Payment options — split payments with checkboxes */}
+          {/* Payment options — ONE method (radio) + optional Credit */}
           <button
             onClick={() => setShowPaymentOptions(!showPaymentOptions)}
             className="w-full mt-2 text-xs text-amber-700 dark:text-amber-400 hover:underline text-left"
@@ -317,48 +314,50 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
           </button>
           {showPaymentOptions && (
             <div className="mt-2 p-3 bg-[#faf6f0] dark:bg-[#0c0a09] rounded-md space-y-2">
-              <div className="text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] uppercase">Split Payment — check all that apply</div>
-              {Object.entries(splitPayments).map(([method, sp]) => {
-                const labels: Record<string,string> = { cash:"Cash", upi:"UPI", dbt:"DBT (Bank Transfer)", bank_finance:"Bank Finance", cheque:"Cheque", credit:"Credit (Udhaar)" };
-                return (
-                  <div key={method} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={sp.checked}
-                      onChange={(e) => setSplitPayments({ ...splitPayments, [method]: { ...sp, checked: e.target.checked } })}
-                      className="w-4 h-4 accent-amber-600"
-                    />
-                    <label className="text-xs flex-1">{labels[method]}</label>
-                    {sp.checked && (
-                      <input
-                        type="number"
-                        value={sp.amount}
-                        onChange={(ev) => setSplitPayments({ ...splitPayments, [method]: { ...sp, amount: Number(ev.target.value) } })}
-                        placeholder="₹"
-                        className="w-20 px-1.5 py-1 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5] text-right"
-                      />
-                    )}
-                  </div>
-                );
-              })}
+              <div className="text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] uppercase">Payment Method</div>
+              {[
+                { value: "cash", label: "Cash" },
+                { value: "upi", label: "UPI" },
+                { value: "dbt", label: "DBT (Bank Transfer)" },
+                { value: "bank_finance", label: "Bank Finance" },
+                { value: "cheque", label: "Cheque" },
+              ].map((opt) => (
+                <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="paymentMethod" value={opt.value} checked={paymentMethod === opt.value} onChange={(e) => setPaymentMethod(e.target.value)} className="w-4 h-4 accent-amber-600" />
+                  <span className="text-xs">{opt.label}</span>
+                </label>
+              ))}
+              <div className="mt-2">
+                <label className="block text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] mb-1">Amount Paid (₹)</label>
+                <div className="flex gap-1">
+                  <input type="number" value={paidAmount || ""} onChange={(e) => setPaidAmount(Number(e.target.value))} placeholder="0" className="flex-1 px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
+                  <button onClick={() => setPaidAmount(grandTotal)} className="text-[10px] bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-2 py-1 rounded hover:bg-amber-200 whitespace-nowrap">Full</button>
+                </div>
+              </div>
+              {/* Credit checkbox — auto-calculates remaining as unpaid */}
+              <label className="flex items-center gap-2 mt-2 cursor-pointer p-2 bg-red-50 dark:bg-red-950/20 rounded">
+                <input type="checkbox" checked={hasCredit} onChange={(e) => setHasCredit(e.target.checked)} className="w-4 h-4 accent-red-600" />
+                <span className="text-xs font-semibold text-red-700 dark:text-red-400">Credit (Udhaar) — balance will be unpaid</span>
+              </label>
+              {/* Live summary */}
               <div className="text-[10px] mt-2 pt-2 border-t border-[#e6e0d4] dark:border-[#2e2a25]">
                 <div className="flex justify-between"><span className="text-[#787468] dark:text-[#a8a29e]">Total Bill:</span><span>{formatINR(grandTotal)}</span></div>
-                <div className="flex justify-between"><span className="text-green-700 dark:text-green-400">Total Paid:</span><span className="text-green-700 dark:text-green-400">{formatINR(totalPaid)}</span></div>
-                <div className="flex justify-between"><span className="text-red-700 dark:text-red-400">Credit:</span><span className="text-red-700 dark:text-red-400">{formatINR(creditAmount)}</span></div>
-                <div className="flex justify-between font-semibold mt-1 pt-1 border-t border-[#e6e0d4] dark:border-[#2e2a25]"><span>Balance:</span><span className={balance > 0 ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}>{formatINR(balance)}</span></div>
-              </div>
-              {splitPayments.credit.checked && !customerId && (
-                <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded text-[10px] text-red-700 dark:text-red-400">
-                  Credit selected — Walk-in customer name, phone, and location are required below.
+                <div className="flex justify-between"><span className="text-green-700 dark:text-green-400">Paid ({paymentMethod}):</span><span className="text-green-700 dark:text-green-400">{formatINR(paidAmount)}</span></div>
+                {hasCredit && (
+                  <div className="flex justify-between"><span className="text-red-700 dark:text-red-400">Credit (Unpaid):</span><span className="text-red-700 dark:text-red-400">{formatINR(creditAmount)}</span></div>
+                )}
+                <div className="flex justify-between font-semibold mt-1 pt-1 border-t border-[#e6e0d4] dark:border-[#2e2a25]">
+                  <span>Balance Due:</span>
+                  <span className={balance > 0 ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}>{formatINR(Math.max(0, balance))}</span>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
-          {/* Walk-in customer details (shown when no customer selected) */}
-          {!customerId && splitPayments.credit?.checked && (
+          {/* Credit customer details — shown when credit is checked */}
+          {hasCredit && (
             <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-md space-y-2">
-              <div className="text-[10px] font-semibold text-amber-800 dark:text-amber-300 uppercase">Credit Customer Details (required)</div>
+              <div className="text-[10px] font-semibold text-amber-800 dark:text-amber-300 uppercase">Credit Customer Details *</div>
               <input type="text" value={walkInName} onChange={(e) => setWalkInName(e.target.value)} placeholder="Customer name *" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
               <input type="text" value={walkInPhone} onChange={(e) => setWalkInPhone(e.target.value)} placeholder="Phone number *" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
               <input type="text" value={walkInLocation} onChange={(e) => setWalkInLocation(e.target.value)} placeholder="Location *" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
