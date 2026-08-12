@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Modal } from "@/components/Modal";
@@ -31,8 +31,9 @@ const EMPTY = {
   stockQuantity: 0,
 };
 
-export function InventoryList({ products }: { products: Product[] }) {
+export function InventoryList({ products: initialProducts }: { products: Product[] }) {
   const router = useRouter();
+  const [products, setProducts] = useState(initialProducts);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -40,6 +41,21 @@ export function InventoryList({ products }: { products: Product[] }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Always fetch fresh data on mount — fixes "data reflects late"
+  const refresh = async () => {
+    try {
+      const res = await fetch("/api/products", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
 
   const filtered = search
     ? products.filter((p) =>
@@ -83,6 +99,7 @@ export function InventoryList({ products }: { products: Product[] }) {
         throw new Error(err.error || `Failed (${res.status})`);
       }
       setModalOpen(false);
+      await refresh();
       router.refresh();
     } catch (e: any) {
       setError(e.message);
@@ -95,6 +112,7 @@ export function InventoryList({ products }: { products: Product[] }) {
     if (!deleteId) return;
     try {
       await fetch(`/api/products/${deleteId}`, { method: "DELETE" });
+      await refresh();
       router.refresh();
     } catch (e) {
       console.error(e);

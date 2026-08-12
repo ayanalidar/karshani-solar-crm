@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Modal } from "@/components/Modal";
@@ -17,8 +17,9 @@ type Customer = {
   totalPurchases: number;
 };
 
-export function CustomersList({ customers }: { customers: Customer[] }) {
+export function CustomersList({ customers: initialCustomers }: { customers: Customer[] }) {
   const router = useRouter();
+  const [customers, setCustomers] = useState(initialCustomers);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -26,6 +27,21 @@ export function CustomersList({ customers }: { customers: Customer[] }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Always fetch fresh data on mount — fixes "data reflects late"
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch("/api/customers", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setCustomers(data);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const filtered = search
     ? customers.filter((c) =>
@@ -70,6 +86,8 @@ export function CustomersList({ customers }: { customers: Customer[] }) {
         throw new Error(err.error || `Failed (${res.status})`);
       }
       setModalOpen(false);
+      // Instant refresh — fetch fresh data immediately after save
+      await refresh();
       router.refresh();
     } catch (e: any) {
       setError(e.message);
@@ -82,6 +100,7 @@ export function CustomersList({ customers }: { customers: Customer[] }) {
     if (!deleteId) return;
     try {
       await fetch(`/api/customers/${deleteId}`, { method: "DELETE" });
+      await refresh();
       router.refresh();
     } catch (e) {
       console.error(e);
@@ -93,7 +112,7 @@ export function CustomersList({ customers }: { customers: Customer[] }) {
       <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           <h2 className="font-serif text-lg">Customers</h2>
-          <span className="text-xs text-[#787468] bg-[#f5efe5] px-2 py-0.5 rounded-full">{filtered.length} records</span>
+          <span className="text-xs text-[#787468] dark:text-[#a8a29e] bg-[#f5efe5] dark:bg-[#2a2620] px-2 py-0.5 rounded-full">{filtered.length} records</span>
         </div>
         <div className="flex items-center gap-2">
           <SearchInput value={search} onChange={setSearch} placeholder="Search customers…" />
@@ -106,17 +125,17 @@ export function CustomersList({ customers }: { customers: Customer[] }) {
         </div>
       </div>
 
-      <div className="bg-white border border-[#e6e0d4] rounded-xl overflow-hidden">
+      <div className="bg-white dark:bg-[#1c1917] border border-[#e6e0d4] dark:border-[#2e2a25] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           {filtered.length === 0 ? (
-            <div className="text-center py-16 text-sm text-[#787468]">
-              <h3 className="font-serif text-lg text-[#504d44] mb-2">No customers yet</h3>
+            <div className="text-center py-16 text-sm text-[#787468] dark:text-[#a8a29e]">
+              <h3 className="font-serif text-lg text-[#504d44] dark:text-[#d6cfc5] mb-2">No customers yet</h3>
               <p>Click &quot;+ Add Customer&quot; to create the first one.</p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-[10px] text-[#787468] uppercase tracking-wider border-b border-[#e6e0d4]">
+                <tr className="text-[10px] text-[#787468] dark:text-[#a8a29e] uppercase tracking-wider border-b border-[#e6e0d4] dark:border-[#2e2a25]">
                   <th className="text-left p-3">Name</th>
                   <th className="text-left p-3">Phone</th>
                   <th className="text-left p-3">City</th>
@@ -127,9 +146,9 @@ export function CustomersList({ customers }: { customers: Customer[] }) {
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id} className="border-b border-[#ede8dc] hover:bg-amber-50/50">
+                  <tr key={c.id} className="border-b border-[#ede8dc] dark:border-[#2e2a25] hover:bg-amber-50/50 dark:hover:bg-amber-950/20">
                     <td className="p-3 font-semibold">
-                      <Link href={`/customers/${c.id}`} className="hover:text-amber-700 hover:underline">
+                      <Link href={`/customers/${c.id}`} className="hover:text-amber-700 dark:hover:text-amber-400 hover:underline">
                         {c.name}
                       </Link>
                     </td>
@@ -138,10 +157,10 @@ export function CustomersList({ customers }: { customers: Customer[] }) {
                     <td className="p-3 font-mono text-xs">{c.gstin || "—"}</td>
                     <td className="p-3 text-right font-medium">{formatINR(c.totalPurchases)}</td>
                     <td className="p-3 text-right whitespace-nowrap">
-                      <button onClick={() => openEdit(c)} className="text-xs text-amber-700 hover:underline mr-3">
+                      <button onClick={() => openEdit(c)} className="text-xs text-amber-700 dark:text-amber-400 hover:underline mr-3">
                         Edit
                       </button>
-                      <button onClick={() => setDeleteId(c.id)} className="text-xs text-red-600 hover:underline">
+                      <button onClick={() => setDeleteId(c.id)} className="text-xs text-red-600 dark:text-red-400 hover:underline">
                         Delete
                       </button>
                     </td>
@@ -156,46 +175,46 @@ export function CustomersList({ customers }: { customers: Customer[] }) {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? "Edit Customer" : "Add Customer"}>
         <div className="grid gap-3">
           <div>
-            <label className="block text-xs font-semibold text-[#504d44] mb-1">Name *</label>
+            <label className="block text-xs font-semibold text-[#504d44] dark:text-[#d6cfc5] mb-1">Name *</label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2 border border-[#e6e0d4] rounded-md text-sm focus:outline-none focus:border-amber-600"
+              className="w-full px-3 py-2 border border-[#e6e0d4] dark:border-[#2e2a25] rounded-md text-sm bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5] focus:outline-none focus:border-amber-600"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#504d44] mb-1">Phone</label>
+            <label className="block text-xs font-semibold text-[#504d44] dark:text-[#d6cfc5] mb-1">Phone</label>
             <input
               type="text"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full px-3 py-2 border border-[#e6e0d4] rounded-md text-sm focus:outline-none focus:border-amber-600"
+              className="w-full px-3 py-2 border border-[#e6e0d4] dark:border-[#2e2a25] rounded-md text-sm bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5] focus:outline-none focus:border-amber-600"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#504d44] mb-1">City</label>
+            <label className="block text-xs font-semibold text-[#504d44] dark:text-[#d6cfc5] mb-1">City</label>
             <input
               type="text"
               value={form.city}
               onChange={(e) => setForm({ ...form, city: e.target.value })}
-              className="w-full px-3 py-2 border border-[#e6e0d4] rounded-md text-sm focus:outline-none focus:border-amber-600"
+              className="w-full px-3 py-2 border border-[#e6e0d4] dark:border-[#2e2a25] rounded-md text-sm bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5] focus:outline-none focus:border-amber-600"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#504d44] mb-1">GSTIN</label>
+            <label className="block text-xs font-semibold text-[#504d44] dark:text-[#d6cfc5] mb-1">GSTIN</label>
             <input
               type="text"
               value={form.gstin}
               onChange={(e) => setForm({ ...form, gstin: e.target.value.toUpperCase() })}
-              className="w-full px-3 py-2 border border-[#e6e0d4] rounded-md text-sm focus:outline-none focus:border-amber-600 font-mono"
+              className="w-full px-3 py-2 border border-[#e6e0d4] dark:border-[#2e2a25] rounded-md text-sm bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5] focus:outline-none focus:border-amber-600 font-mono"
             />
           </div>
-          {error && <div className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded">{error}</div>}
+          {error && <div className="text-red-600 text-sm bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 px-3 py-2 rounded">{error}</div>}
           <div className="flex justify-end gap-2 mt-2">
             <button
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 rounded-md text-sm border border-[#e6e0d4] text-[#504d44] hover:bg-[#faf6f0]"
+              className="px-4 py-2 rounded-md text-sm border border-[#e6e0d4] dark:border-[#2e2a25] text-[#504d44] dark:text-[#d6cfc5] hover:bg-[#faf6f0] dark:hover:bg-[#2a2620]"
             >
               Cancel
             </button>
@@ -215,7 +234,7 @@ export function CustomersList({ customers }: { customers: Customer[] }) {
         onClose={() => setDeleteId(null)}
         onConfirm={confirmDelete}
         title="Delete customer?"
-        message="This permanently deletes the customer. Their past invoices/enquiries will remain but lose the customer link."
+        message="This permanently deletes the customer."
         confirmText="Delete"
         danger
       />
