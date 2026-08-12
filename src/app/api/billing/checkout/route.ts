@@ -78,8 +78,15 @@ export async function POST(request: Request) {
   });
 
   // === AUTO-CREATE LEDGER TRANSACTIONS ===
+  // Helper: try insert with payment_method, fall back without
+  const safeInsert = async (tableData: Record<string, any>) => {
+    let r = await rawInsert("transactions", { ...tableData, payment_method: tableData.payment_method || "cash" });
+    if (!r) r = await rawInsert("transactions", tableData);
+    return r;
+  };
+
   // Credit the full invoice amount (customer owes this)
-  await rawInsert("transactions", {
+  await safeInsert({
     party_type: "customer",
     party_id: data.customerId ? String(data.customerId) : null,
     party_name: customerName,
@@ -92,39 +99,49 @@ export async function POST(request: Request) {
     payment_method: "cash",
   });
 
-  // If customer paid something at billing time, log as debit (payment)
-  const paymentMethod = String(data.paymentMethod || "cash");
-  const paidAmount = Number(data.paidAmount || 0);
-  if (paidAmount > 0) {
-    await rawInsert("transactions", {
-      party_type: "customer",
-      party_id: data.customerId ? String(data.customerId) : null,
-      party_name: customerName,
-      type: "debit",
-      amount: paidAmount,
-      description: `Payment for ${invoice.invoiceNo} (${paymentMethod})`,
-      transaction_date: todayISO(),
-      reference_type: "payment",
-      reference_id: invoice.id,
-      payment_method: paymentMethod,
-    });
+  // Process split payments — data.payments is an array of {method, amount}
+  const payments = Array.isArray(data.payments) ? data.payments : [];
+  if (payments.length === 0 && data.paidAmount) {
+    // Backward compat: single payment
+    payments.push({ method: data.paymentMethod || "cash", amount: Number(data.paidAmount) });
+  }
+  if (data.financeAmount > 0) {
+    payments.push({ method: "bank_finance", amount: Number(data.financeAmount) });
   }
 
-  // If bank finance, log the financed amount as a separate debit
-  const financeAmount = Number(data.financeAmount || 0);
-  if (financeAmount > 0) {
-    await rawInsert("transactions", {
-      party_type: "customer",
-      party_id: data.customerId ? String(data.customerId) : null,
-      party_name: customerName,
-      type: "debit",
-      amount: financeAmount,
-      description: `Bank finance for ${invoice.invoiceNo}`,
-      transaction_date: todayISO(),
-      reference_type: "payment",
-      reference_id: invoice.id,
-      payment_method: "bank_finance",
-    });
+  for (const p of payments) {
+    if (p.amount > 0) {
+      await safeInsert({
+        party_type: "customer",
+        party_id: data.customerId ? String(data.customerId) : null,
+        party_name: customerName,
+        type: "debit",
+        amount: Number(p.amount),
+        description: `Payment for ${invoice.invoiceNo} (${p.method})`,
+        transaction_date: todayISO(),
+        reference_type: "payment",
+        reference_id: invoice.id,
+        payment_method: p.method,
+      });
+    }
+  }
+
+  // Store customer phone/location if provided (for credit customers)
+  if (data.customerPhone || data.customerLocation) {
+    // Update or create customer record with contact info
+    if (data.customerId) {
+      await rawInsert("transactions", {
+        party_type: "customer",
+        party_id: String(data.customerId),
+        party_name: customerName,
+        type: "debit",
+        amount: 0,
+        description: `Contact: ${data.customerPhone || ""} ${data.customerLocation || ""}`,
+        transaction_date: todayISO(),
+        reference_type: "manual",
+        payment_method: "cash",
+      }).catch(() => null);
+    }
   }
 
   return NextResponse.json(invoice, { status: 201 });

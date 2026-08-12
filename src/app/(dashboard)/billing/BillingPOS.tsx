@@ -49,13 +49,21 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerId, setCustomerId] = useState("");
   const [walkInName, setWalkInName] = useState("");
+  const [walkInPhone, setWalkInPhone] = useState("");
+  const [walkInLocation, setWalkInLocation] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<{ invoiceNo: string; invoiceId: string } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [paidAmount, setPaidAmount] = useState(0);
-  const [financeAmount, setFinanceAmount] = useState(0);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  // Split payment: each method can be checked + has an amount
+  const [splitPayments, setSplitPayments] = useState<Record<string, { checked: boolean; amount: number }>>({
+    cash: { checked: false, amount: 0 },
+    upi: { checked: false, amount: 0 },
+    dbt: { checked: false, amount: 0 },
+    bank_finance: { checked: false, amount: 0 },
+    cheque: { checked: false, amount: 0 },
+    credit: { checked: false, amount: 0 },
+  });
 
   const filteredProducts = useMemo(() => {
     if (!search) return products;
@@ -96,26 +104,42 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
     ? customers.find((c) => c.id === customerId)?.name || ""
     : walkInName.trim() || "Walk-in Customer";
 
+  // Calculate total paid from split payments (excluding credit)
+  const totalPaid = Object.entries(splitPayments)
+    .filter(([method, sp]) => sp.checked && method !== "credit")
+    .reduce((s, [, sp]) => s + sp.amount, 0);
+  const creditAmount = splitPayments.credit.checked ? splitPayments.credit.amount : 0;
+  const balance = grandTotal - totalPaid - creditAmount;
+
   const checkout = async () => {
     setCheckingOut(true);
     setError("");
     setSuccess(null);
     try {
-      if (cart.length === 0) {
-        setError("Cart is empty");
+      if (cart.length === 0) { setError("Cart is empty"); setCheckingOut(false); return; }
+
+      // If credit is selected, name + phone + location are mandatory
+      if (splitPayments.credit.checked && (!walkInName.trim() || !walkInPhone.trim() || !walkInLocation.trim())) {
+        setError("For credit: Customer name, phone, and location are required");
         setCheckingOut(false);
         return;
       }
+
+      // Build payments array from checked split payments
+      const payments = Object.entries(splitPayments)
+        .filter(([, sp]) => sp.checked && sp.amount > 0)
+        .map(([method, sp]) => ({ method, amount: sp.amount }));
+
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId: customerId || undefined,
           customerName,
+          customerPhone: walkInPhone || undefined,
+          customerLocation: walkInLocation || undefined,
           items: cart.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
-          paymentMethod,
-          paidAmount: paidAmount || undefined,
-          financeAmount: financeAmount || undefined,
+          payments,
         }),
       });
       if (!res.ok) {
@@ -125,10 +149,9 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
       const inv = await res.json();
       setSuccess({ invoiceNo: inv.invoiceNo, invoiceId: inv.id });
       setCart([]);
-      setWalkInName("");
+      setWalkInName(""); setWalkInPhone(""); setWalkInLocation("");
       setCustomerId("");
-      setPaidAmount(0);
-      setFinanceAmount(0);
+      setSplitPayments({ cash: {checked:false,amount:0}, upi:{checked:false,amount:0}, dbt:{checked:false,amount:0}, bank_finance:{checked:false,amount:0}, cheque:{checked:false,amount:0}, credit:{checked:false,amount:0} });
       setShowPaymentOptions(false);
       router.refresh();
     } catch (e: any) {
@@ -285,7 +308,7 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
 
           {error && <div className="text-red-600 text-xs bg-red-50 border border-red-200 px-2 py-1.5 rounded mt-2">{error}</div>}
 
-          {/* Payment options */}
+          {/* Payment options — split payments with checkboxes */}
           <button
             onClick={() => setShowPaymentOptions(!showPaymentOptions)}
             className="w-full mt-2 text-xs text-amber-700 dark:text-amber-400 hover:underline text-left"
@@ -294,30 +317,51 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
           </button>
           {showPaymentOptions && (
             <div className="mt-2 p-3 bg-[#faf6f0] dark:bg-[#0c0a09] rounded-md space-y-2">
-              <div>
-                <label className="block text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] mb-1">Payment Method</label>
-                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]">
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="dbt">DBT (Bank Transfer)</option>
-                  <option value="bank_finance">Bank Finance</option>
-                  <option value="cheque">Cheque</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] mb-1">Amount Paid Now (₹)</label>
-                <input type="number" value={paidAmount} onChange={(e) => setPaidAmount(Number(e.target.value))} placeholder="0" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
-                <button onClick={() => setPaidAmount(grandTotal)} className="text-[10px] text-amber-700 dark:text-amber-400 hover:underline mt-0.5">Set full amount</button>
-              </div>
-              {paymentMethod === "bank_finance" && (
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] mb-1">Bank Finance Amount (₹)</label>
-                  <input type="number" value={financeAmount} onChange={(e) => setFinanceAmount(Number(e.target.value))} placeholder="0" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
-                  <div className="text-[10px] text-[#787468] dark:text-[#a8a29e] mt-0.5">
-                    Balance after finance: {formatINR(grandTotal - paidAmount - financeAmount)}
+              <div className="text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] uppercase">Split Payment — check all that apply</div>
+              {Object.entries(splitPayments).map(([method, sp]) => {
+                const labels: Record<string,string> = { cash:"Cash", upi:"UPI", dbt:"DBT (Bank Transfer)", bank_finance:"Bank Finance", cheque:"Cheque", credit:"Credit (Udhaar)" };
+                return (
+                  <div key={method} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={sp.checked}
+                      onChange={(e) => setSplitPayments({ ...splitPayments, [method]: { ...sp, checked: e.target.checked } })}
+                      className="w-4 h-4 accent-amber-600"
+                    />
+                    <label className="text-xs flex-1">{labels[method]}</label>
+                    {sp.checked && (
+                      <input
+                        type="number"
+                        value={sp.amount}
+                        onChange={(ev) => setSplitPayments({ ...splitPayments, [method]: { ...sp, amount: Number(ev.target.value) } })}
+                        placeholder="₹"
+                        className="w-20 px-1.5 py-1 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5] text-right"
+                      />
+                    )}
                   </div>
+                );
+              })}
+              <div className="text-[10px] mt-2 pt-2 border-t border-[#e6e0d4] dark:border-[#2e2a25]">
+                <div className="flex justify-between"><span className="text-[#787468] dark:text-[#a8a29e]">Total Bill:</span><span>{formatINR(grandTotal)}</span></div>
+                <div className="flex justify-between"><span className="text-green-700 dark:text-green-400">Total Paid:</span><span className="text-green-700 dark:text-green-400">{formatINR(totalPaid)}</span></div>
+                <div className="flex justify-between"><span className="text-red-700 dark:text-red-400">Credit:</span><span className="text-red-700 dark:text-red-400">{formatINR(creditAmount)}</span></div>
+                <div className="flex justify-between font-semibold mt-1 pt-1 border-t border-[#e6e0d4] dark:border-[#2e2a25]"><span>Balance:</span><span className={balance > 0 ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}>{formatINR(balance)}</span></div>
+              </div>
+              {splitPayments.credit.checked && !customerId && (
+                <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded text-[10px] text-red-700 dark:text-red-400">
+                  Credit selected — Walk-in customer name, phone, and location are required below.
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Walk-in customer details (shown when no customer selected) */}
+          {!customerId && splitPayments.credit?.checked && (
+            <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-md space-y-2">
+              <div className="text-[10px] font-semibold text-amber-800 dark:text-amber-300 uppercase">Credit Customer Details (required)</div>
+              <input type="text" value={walkInName} onChange={(e) => setWalkInName(e.target.value)} placeholder="Customer name *" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
+              <input type="text" value={walkInPhone} onChange={(e) => setWalkInPhone(e.target.value)} placeholder="Phone number *" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
+              <input type="text" value={walkInLocation} onChange={(e) => setWalkInLocation(e.target.value)} placeholder="Location *" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
             </div>
           )}
 
