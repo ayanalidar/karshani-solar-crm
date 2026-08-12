@@ -13,11 +13,11 @@ export default async function QuotationPdfPage({ params, searchParams }: {
   const { print } = await searchParams;
   const autoPrint = print === "true" || print === "1";
 
-  const q = await prisma.quotation.findUnique({
-    where: { id },
-    include: { items: true },
-  });
+  // Use findFirst + separate items query instead of findUnique + include
+  const q = await prisma.quotation.findFirst({ where: { id } });
   if (!q) notFound();
+
+  const items = await prisma.quotationItem.findMany({ where: { quotationId: id } });
 
   // Use fiscal-year numbering in the proforma (matches sample: 2026-27/210)
   const fyPrefix = fiscalYearPrefix(new Date(q.quoteDate));
@@ -30,7 +30,7 @@ export default async function QuotationPdfPage({ params, searchParams }: {
     customerPhone: q.customerPhone,
     customerLocation: q.customerLocation,
     systemDescription: q.systemDescription,
-    items: q.items.map((i) => ({
+    items: items.map((i) => ({
       id: i.id,
       itemName: i.itemName,
       hsnCode: i.hsnCode,

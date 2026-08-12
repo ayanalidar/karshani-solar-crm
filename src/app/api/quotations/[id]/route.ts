@@ -6,12 +6,27 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const unauth = await requireAuth();
   if (unauth) return unauth;
   const { id } = await params;
-  const quotation = await prisma.quotation.findUnique({
-    where: { id },
-    include: { items: true, customer: true },
-  });
-  if (!quotation) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(quotation);
+
+  // First try findUnique without include — if this works, the issue is
+  // with the include relation. If it also fails, the issue is findUnique
+  // itself or the safeWrap.
+  const quotation = await prisma.quotation.findUnique({ where: { id } });
+
+  if (!quotation) {
+    // Try findFirst as a fallback — sometimes findUnique has issues with
+    // certain Prisma adapter configurations.
+    const fallback = await prisma.quotation.findFirst({ where: { id } });
+    if (!fallback) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    // Fetch items separately
+    const items = await prisma.quotationItem.findMany({ where: { quotationId: id } });
+    return NextResponse.json({ ...fallback, items });
+  }
+
+  // Fetch items separately (avoids include relation issues)
+  const items = await prisma.quotationItem.findMany({ where: { quotationId: id } });
+  return NextResponse.json({ ...quotation, items });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

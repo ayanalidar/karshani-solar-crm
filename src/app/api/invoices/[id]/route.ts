@@ -6,12 +6,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const unauth = await requireAuth();
   if (unauth) return unauth;
   const { id } = await params;
-  const invoice = await prisma.invoice.findUnique({
-    where: { id },
-    include: { items: true, customer: true },
-  });
+  // Use findFirst + separate items query (findUnique + include has issues)
+  const invoice = await prisma.invoice.findFirst({ where: { id } });
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(invoice);
+  const items = await prisma.invoiceItem.findMany({ where: { invoiceId: id } });
+  return NextResponse.json({ ...invoice, items });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

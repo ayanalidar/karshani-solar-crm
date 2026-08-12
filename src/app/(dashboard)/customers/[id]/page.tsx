@@ -8,17 +8,22 @@ export const dynamic = "force-dynamic";
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const customer = await prisma.customer.findUnique({
-    where: { id },
-    include: {
-      enquiries: { orderBy: { createdAt: "desc" } },
-      quotations: { orderBy: { createdAt: "desc" }, include: { items: true } },
-      invoices: { orderBy: { createdAt: "desc" }, include: { items: true } },
-      installations: { orderBy: { createdAt: "desc" } },
-    },
-  });
+  // Use findFirst instead of findUnique + include — the PrismaPg adapter
+  // has issues with nested includes on findUnique in some configurations.
+  // Fetching relations separately is more reliable.
+  const customerRow = await prisma.customer.findFirst({ where: { id } });
 
-  if (!customer) notFound();
+  if (!customerRow) notFound();
+
+  // Fetch relations separately
+  const [enquiries, quotations, invoices, installations] = await Promise.all([
+    prisma.enquiry.findMany({ where: { customerId: id }, orderBy: { createdAt: "desc" } }),
+    prisma.quotation.findMany({ where: { customerId: id }, orderBy: { createdAt: "desc" } }),
+    prisma.invoice.findMany({ where: { customerId: id }, orderBy: { createdAt: "desc" } }),
+    prisma.installation.findMany({ where: { customerId: id }, orderBy: { createdAt: "desc" } }),
+  ]);
+
+  const customer = { ...customerRow, enquiries, quotations, invoices, installations };
 
   const totalInvoiced = customer.invoices.reduce((s, i) => s + i.grandTotal, 0);
   const totalPaid = customer.invoices.filter((i) => i.status === "paid").reduce((s, i) => s + i.grandTotal, 0);

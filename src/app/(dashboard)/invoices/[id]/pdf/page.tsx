@@ -12,11 +12,11 @@ export default async function InvoicePdfPage({ params, searchParams }: {
   const { print } = await searchParams;
   const autoPrint = print === "true" || print === "1";
 
-  const inv = await prisma.invoice.findUnique({
-    where: { id },
-    include: { items: true },
-  });
+  // Use findFirst + separate items query instead of findUnique + include
+  const inv = await prisma.invoice.findFirst({ where: { id } });
   if (!inv) notFound();
+
+  const items = await prisma.invoiceItem.findMany({ where: { invoiceId: id } });
 
   const data: ProformaData = {
     docNo: inv.invoiceNo,
@@ -25,7 +25,7 @@ export default async function InvoicePdfPage({ params, searchParams }: {
     customerName: inv.customerName,
     systemDescription: inv.description,
     status: inv.status,
-    items: inv.items.map((i) => ({
+    items: items.map((i) => ({
       id: i.id,
       itemName: i.itemName,
       hsnCode: i.hsnCode,
