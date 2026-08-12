@@ -1,6 +1,6 @@
 import { requireAuth } from "@/lib/auth-check";
 import { NextResponse } from "next/server";
-import { fetchAll, toCamel, toCamelArray } from "@/lib/raw-db";
+import { fetchAll, fetchBy, toCamel, toCamelArray } from "@/lib/raw-db";
 
 // GET /api/ledger
 // Returns: customer balances, supplier balances, recent transactions, summary
@@ -12,10 +12,8 @@ export async function GET(request: Request) {
   const fromDate = url.searchParams.get("from");
   const toDate = url.searchParams.get("to");
 
-  // Fetch all data via REST API (HTTPS, no pool limit)
-  const [customers, invoices, suppliers, transactions, expenses, cashEntries] = await Promise.all([
+  const [customers, suppliers, transactions, expenses, cashEntries] = await Promise.all([
     fetchAll("customers", "name.asc", 100),
-    fetchAll("invoices", "created_at.desc", 200),
     fetchAll("supplier_orders", "created_at.desc", 100),
     fetchAll("transactions", "transaction_date.desc", 500),
     fetchAll("expenses", "expense_date.desc", 100),
@@ -28,80 +26,72 @@ export async function GET(request: Request) {
   if (toDate) filteredTxns = filteredTxns.filter((t: any) => t.transaction_date <= toDate);
 
   // === CUSTOMER LEDGER ===
+  // Outstanding = sum of all credit transactions - sum of all debit transactions
+  // Credit = customer owes more (invoice generated, udhaar given)
+  // Debit = customer paid (payment received)
+  // We DON'T count invoices separately — the billing checkout already creates
+  // a credit transaction for the full invoice amount. Counting both would
+  // double-count.
   const customerBalances = (customers || []).map((c: any) => {
-    const custInvoices = (invoices || []).filter((i: any) => i.customer_id === c.id || i.customer_name === c.name);
-    const totalInvoiced = custInvoices.reduce((s: number, i: any) => s + Number(i.grand_total || 0), 0);
-    const totalPaid = custInvoices.filter((i: any) => i.status === "paid").reduce((s: number, i: any) => s + Number(i.grand_total || 0), 0);
+    const custTxns = (filteredTxns || []).filter((t: any) =>
+      t.party_type === "customer" && (t.party_id === c.id || t.party_name === c.name)
+    );
+    const totalCredit = custTxns.filter((t: any) => t.type === "credit").reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+    const totalDebit = custTxns.filter((t: any) => t.type === "debit").reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+    const outstanding = totalCredit - totalDebit;
 
-    // Also include manual transactions (credit = more debt, debit = payment)
-    const custTxns = (filteredTxns || []).filter((t: any) => t.party_type === "customer" && (t.party_id === c.id || t.party_name === c.name));
-    const manualCredit = custTxns.filter((t: any) => t.type === "credit").reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
-    const manualDebit = custTxns.filter((t: any) => t.type === "debit").reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
-
-    const outstanding = totalInvoiced - totalPaid + manualCredit - manualDebit;
-    const unpaidCount = custInvoices.filter((i: any) => i.status !== "paid").length;
-    const lastDate = custInvoices.length > 0
-      ? custInvoices.map((i: any) => i.invoice_date).sort().reverse()[0]
-      : (custTxns.length > 0 ? custTxns[0].transaction_date : null);
+    const lastDate = custTxns.length > 0
+      ? custTxns.map((t: any) => t.transaction_date).sort().reverse()[0]
+      : null;
 
     return {
       ...toCamel(c),
-      totalInvoiced,
-      totalPaid,
-      manualCredit,
-      manualDebit,
-      outstanding,
-      unpaidCount,
-      invoiceCount: custInvoices.length,
+      totalInvoiced: totalCredit,  // total credit = total billed
+      totalPaid: totalDebit,      // total debit = total paid
+      outstanding: Math.max(0, outstanding), // never show negative
+      invoiceCount: custTxns.filter((t: any) => t.reference_type === "invoice").length,
+      txnCount: custTxns.length,
       lastTransactionDate: lastDate,
     };
   }).sort((a: any, b: any) => b.outstanding - a.outstanding);
 
   // === SUPPLIER LEDGER ===
-  const supplierBalances = (suppliers || []).reduce((acc: any[], s: any) => {
-    const supplierName = s.supplier_name;
-    const existing = acc.find((a) => a.name === supplierName);
-    if (existing) {
-      existing.totalOrders += Number(s.amount || 0);
-      if (s.status === "pending") existing.pendingAmount += Number(s.amount || 0);
-    } else {
-      acc.push({
-        name: supplierName,
-        totalOrders: Number(s.amount || 0),
-        pendingAmount: s.status === "pending" ? Number(s.amount || 0) : 0,
-        pendingCount: s.status === "pending" ? 1 : 0,
-        orderCount: 1,
-      });
-    }
-    return acc;
-  }, []).sort((a: any, b: any) => b.pendingAmount - a.pendingAmount);
-
-  // Add supplier transactions (payments made to suppliers)
-  supplierBalances.forEach((sup: any) => {
-    const supTxns = (filteredTxns || []).filter((t: any) => t.party_type === "supplier" && t.party_name === sup.name);
-    sup.totalPaid = supTxns.filter((t: any) => t.type === "debit").reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
-    sup.outstanding = sup.totalOrders - sup.totalPaid;
+  const supplierMap: Record<string, { name: string; totalOrders: number; orderCount: number }> = {};
+  (suppliers || []).forEach((s: any) => {
+    const name = s.supplier_name;
+    if (!supplierMap[name]) supplierMap[name] = { name, totalOrders: 0, orderCount: 0 };
+    supplierMap[name].totalOrders += Number(s.amount || 0);
+    supplierMap[name].orderCount++;
   });
 
+  const supplierBalances = Object.values(supplierMap).map((sup: any) => {
+    const supTxns = (filteredTxns || []).filter((t: any) => t.party_type === "supplier" && t.party_name === sup.name);
+    const totalCredit = supTxns.filter((t: any) => t.type === "credit").reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+    const totalDebit = supTxns.filter((t: any) => t.type === "debit").reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+    // Supplier: credit = we owe them more (they gave us stock), debit = we paid them
+    const outstanding = sup.totalOrders + totalCredit - totalDebit;
+    return {
+      ...sup,
+      totalPaid: totalDebit,
+      outstanding: Math.max(0, outstanding),
+    };
+  }).sort((a: any, b: any) => b.outstanding - a.outstanding);
+
   // === SUMMARY ===
-  const totalCustomerInvoiced = customerBalances.reduce((s: number, c: any) => s + c.totalInvoiced, 0);
-  const totalCustomerPaid = customerBalances.reduce((s: number, c: any) => s + c.totalPaid, 0);
   const totalCustomerOutstanding = customerBalances.reduce((s: number, c: any) => s + c.outstanding, 0);
-  const totalSupplierOrders = supplierBalances.reduce((s: number, c: any) => s + c.totalOrders, 0);
-  const totalSupplierPaid = supplierBalances.reduce((s: number, c: any) => s + (c.totalPaid || 0), 0);
-  const totalSupplierOutstanding = supplierBalances.reduce((s: number, c: any) => s + (c.outstanding || 0), 0);
+  const totalSupplierOutstanding = supplierBalances.reduce((s: number, c: any) => s + c.outstanding, 0);
   const totalExpenses = (expenses || []).reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
   const cashIn = (cashEntries || []).filter((e: any) => e.type === "credit").reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
   const cashOut = (cashEntries || []).filter((e: any) => e.type === "debit").reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
 
   const summary = {
-    totalCustomerInvoiced,
-    totalCustomerPaid,
+    totalCustomerInvoiced: customerBalances.reduce((s: number, c: any) => s + c.totalInvoiced, 0),
+    totalCustomerPaid: customerBalances.reduce((s: number, c: any) => s + c.totalPaid, 0),
     totalCustomerOutstanding,
     customersWithDues: customerBalances.filter((c: any) => c.outstanding > 0).length,
     customerCount: (customers || []).length,
-    totalSupplierOrders,
-    totalSupplierPaid,
+    totalSupplierOrders: supplierBalances.reduce((s: number, c: any) => s + c.totalOrders, 0),
+    totalSupplierPaid: supplierBalances.reduce((s: number, c: any) => s + (c.totalPaid || 0), 0),
     totalSupplierOutstanding,
     suppliersWithDues: supplierBalances.filter((s: any) => s.outstanding > 0).length,
     totalExpenses,

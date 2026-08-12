@@ -56,6 +56,66 @@ export function LedgerView() {
   const [cashError, setCashError] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  // Customer payment drawer
+  const [drawerCustomer, setDrawerCustomer] = useState<CustomerBalance | null>(null);
+  const [drawerTxns, setDrawerTxns] = useState<Transaction[]>([]);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+  const [payAmount, setPayAmount] = useState(0);
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payDesc, setPayDesc] = useState("");
+  const [paySaving, setPaySaving] = useState(false);
+  const [payError, setPayError] = useState("");
+
+  const openDrawer = async (customer: CustomerBalance) => {
+    setDrawerCustomer(customer);
+    setDrawerLoading(true);
+    setPayAmount(customer.outstanding);
+    setPayMethod("cash");
+    setPayDesc("");
+    setPayError("");
+    try {
+      const res = await fetch(`/api/transactions?partyType=customer&partyId=${customer.id}`, { cache: "no-store" });
+      if (res.ok) setDrawerTxns(await res.json());
+    } catch {}
+    setDrawerLoading(false);
+  };
+
+  const submitPayment = async () => {
+    if (!drawerCustomer) return;
+    setPaySaving(true);
+    setPayError("");
+    try {
+      if (!payAmount || payAmount <= 0) { setPayError("Amount must be > 0"); setPaySaving(false); return; }
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          partyType: "customer",
+          partyId: drawerCustomer.id,
+          partyName: drawerCustomer.name,
+          type: "debit",
+          amount: payAmount,
+          description: payDesc || `Payment received (${payMethod})`,
+          transactionDate: todayISO(),
+          paymentMethod: payMethod,
+        }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      setPayAmount(0);
+      setPayDesc("");
+      await refresh();
+      // Re-open drawer with updated data
+      if (drawerCustomer) {
+        const updated = data?.customers.find((c) => c.id === drawerCustomer.id);
+        if (updated) {
+          setDrawerCustomer(updated);
+          const tRes = await fetch(`/api/transactions?partyType=customer&partyId=${updated.id}`, { cache: "no-store" });
+          if (tRes.ok) setDrawerTxns(await tRes.json());
+        }
+      }
+    } catch (e: any) { setPayError(e.message); }
+    finally { setPaySaving(false); }
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -236,7 +296,7 @@ export function LedgerView() {
                       <td className="p-3 text-right whitespace-nowrap">
                         {c.outstanding > 0 && (
                           <div className="flex gap-1 justify-end">
-                            <button onClick={() => { setTxnForm({ ...txnForm, partyType: "customer", partyId: c.id, partyName: c.name, type: "debit", amount: c.outstanding, description: "Full payment", transactionDate: todayISO(), paymentMethod: "cash" }); setTxnModalOpen(true); }} className="text-[10px] bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Pay</button>
+                            <button onClick={() => openDrawer(c)} className="text-[10px] bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Pay</button>
                             {c.phone && <button onClick={() => sendWhatsAppReminder(c.name, c.phone, c.outstanding)} className="text-[10px] bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">💬</button>}
                           </div>
                         )}
@@ -397,6 +457,86 @@ export function LedgerView() {
             <button onClick={saveCashEntry} disabled={cashSaving} className="px-4 py-2 rounded-md text-sm font-semibold bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50">{cashSaving ? "Saving…" : "Save"}</button>
           </div>
         </div>
+      </Modal>
+
+      {/* Customer Payment Drawer — shows full transaction history + payment form */}
+      <Modal open={!!drawerCustomer} onClose={() => setDrawerCustomer(null)} title={drawerCustomer ? `${drawerCustomer.name} — Payment History` : ""} size="lg">
+        {drawerCustomer && (
+          <div className="space-y-4">
+            {/* Customer summary */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-[#faf6f0] dark:bg-[#0c0a09] rounded-lg p-2 text-center">
+                <div className="text-[10px] text-[#787468] dark:text-[#a8a29e] uppercase">Total Billed</div>
+                <div className="font-serif text-base">{formatINR(drawerCustomer.totalInvoiced)}</div>
+              </div>
+              <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-2 text-center">
+                <div className="text-[10px] text-green-700 dark:text-green-400 uppercase">Total Paid</div>
+                <div className="font-serif text-base text-green-700 dark:text-green-400">{formatINR(drawerCustomer.totalPaid)}</div>
+              </div>
+              <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-2 text-center">
+                <div className="text-[10px] text-red-700 dark:text-red-400 uppercase">Outstanding</div>
+                <div className="font-serif text-base text-red-700 dark:text-red-400">{formatINR(drawerCustomer.outstanding)}</div>
+              </div>
+            </div>
+
+            {/* Transaction history */}
+            <div className="border border-[#e6e0d4] dark:border-[#2e2a25] rounded-lg overflow-hidden">
+              <div className="text-[10px] text-[#787468] dark:text-[#a8a29e] uppercase font-semibold px-3 py-2 border-b border-[#e6e0d4] dark:border-[#2e2a25]">Transaction History</div>
+              <div className="max-h-48 overflow-y-auto">
+                {drawerLoading ? (
+                  <div className="text-center py-4 text-xs text-[#787468]">Loading…</div>
+                ) : drawerTxns.length === 0 ? (
+                  <div className="text-center py-4 text-xs text-[#787468]">No transactions yet.</div>
+                ) : (
+                  <table className="w-full text-xs">
+                    <thead><tr className="text-[9px] text-[#787468] uppercase border-b border-[#e6e0d4] dark:border-[#2e2a25]">
+                      <th className="text-left p-2">Date</th><th className="text-left p-2">Type</th><th className="text-left p-2">Method</th><th className="text-left p-2">Description</th><th className="text-right p-2">Amount</th>
+                    </tr></thead>
+                    <tbody>
+                      {drawerTxns.map((t) => (
+                        <tr key={t.id} className="border-b border-[#ede8dc] dark:border-[#2e2a25]">
+                          <td className="p-2 text-[10px]">{formatDate(t.transactionDate)}</td>
+                          <td className="p-2"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${t.type === "credit" ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400" : "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400"}`}>{t.type === "credit" ? "CREDIT" : "PAID"}</span></td>
+                          <td className="p-2 text-[10px]">{t.paymentMethod || "cash"}</td>
+                          <td className="p-2 text-[10px] text-[#504d44] dark:text-[#d6cfc5]">{t.description || "—"}</td>
+                          <td className={`p-2 text-right font-semibold text-[10px] ${t.type === "credit" ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>{t.type === "credit" ? "+" : "−"}{formatINR(t.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* Payment form (for EMI / partial payments) */}
+            {drawerCustomer.outstanding > 0 ? (
+              <div className="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 space-y-2">
+                <div className="text-xs font-semibold text-amber-800 dark:text-amber-300">Record Payment (EMI / Partial / Full)</div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#787468] mb-0.5">Amount (₹)</label>
+                    <input type="number" value={payAmount || ""} onChange={(e) => setPayAmount(Number(e.target.value))} className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#787468] mb-0.5">Method</label>
+                    <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]">
+                      <option value="cash">Cash</option><option value="upi">UPI</option><option value="dbt">DBT</option><option value="bank_finance">Bank Finance</option><option value="cheque">Cheque</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#787468] mb-0.5">Note (optional)</label>
+                    <input type="text" value={payDesc} onChange={(e) => setPayDesc(e.target.value)} placeholder="EMI / Partial…" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
+                  </div>
+                </div>
+                <button onClick={() => setPayAmount(drawerCustomer.outstanding)} className="text-[10px] text-amber-700 dark:text-amber-400 hover:underline">Set full outstanding ({formatINR(drawerCustomer.outstanding)})</button>
+                {payError && <div className="text-red-600 text-xs bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 px-2 py-1 rounded">{payError}</div>}
+                <button onClick={submitPayment} disabled={paySaving} className="w-full bg-green-600 text-white py-2 rounded-md text-sm font-semibold hover:bg-green-700 disabled:opacity-50">{paySaving ? "Saving…" : "Record Payment"}</button>
+              </div>
+            ) : (
+              <div className="text-center text-sm text-green-700 dark:text-green-400 font-semibold py-2">✓ Balance cleared — no outstanding dues</div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );
