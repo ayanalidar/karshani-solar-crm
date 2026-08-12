@@ -14,9 +14,6 @@ export default function LoginPage() {
     if (pin.length >= 4) return;
     const newPin = pin + d;
     setPin(newPin);
-    // Auto-submit when 4 digits entered (kept for fast UX) — but the
-    // explicit Login button is also visible at 4 digits for users who
-    // prefer to tap it manually.
     if (newPin.length === 4) {
       handleLogin(newPin);
     }
@@ -56,7 +53,6 @@ export default function LoginPage() {
     }
   };
 
-  // Allow keyboard input on desktops
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key >= "0" && e.key <= "9") {
       handleKey(e.key);
@@ -71,74 +67,82 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#faf6f0] flex items-center justify-center p-4 outline-none"
+      className="min-h-screen bg-[#faf6f0] dark:bg-[#0c0a09] flex items-center justify-center p-4 outline-none"
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      <div className="bg-white border border-[#e6e0d4] rounded-2xl p-8 max-w-sm w-full text-center shadow-xl">
+      <div className="bg-white dark:bg-[#1c1917] border border-[#e6e0d4] dark:border-[#2e2a25] rounded-2xl p-6 sm:p-8 max-w-[340px] w-full text-center shadow-xl">
+        {/* Logo */}
         <img
           src="/logo.jpeg"
           alt="KARSHANI ENTERPRISES"
-          className="w-24 h-24 mx-auto rounded-full object-cover border-4 border-amber-100 shadow-md mb-4"
+          className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full object-cover border-4 border-amber-100 shadow-md mb-3"
         />
-        <h1 className="text-2xl font-serif text-[#1c1915] tracking-tight">KARSHANI</h1>
-        <p className="text-xs text-[#787468] uppercase tracking-widest mt-1 mb-8">
+        <h1 className="text-xl sm:text-2xl font-serif text-[#1c1915] dark:text-[#f5efe5] tracking-tight">KARSHANI</h1>
+        <p className="text-[10px] sm:text-xs text-[#787468] dark:text-[#a8a29e] uppercase tracking-widest mt-1 mb-6">
           Solar Management System
         </p>
 
-        <div className="flex justify-center gap-3 mb-6">
+        {/* PIN dots */}
+        <div className="flex justify-center gap-3 mb-5">
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
+              className={`w-3 h-3 rounded-full border-2 transition-all ${
                 error
                   ? "border-red-600 bg-red-600"
                   : i < pin.length
                   ? "border-amber-600 bg-amber-600"
-                  : "border-[#e6e0d4]"
+                  : "border-[#e6e0d4] dark:border-[#2e2a25]"
               }`}
             />
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-2 max-w-56 mx-auto">
+        {/* Keypad — fixed size buttons, no overflow */}
+        <div className="grid grid-cols-3 gap-2 mx-auto" style={{ maxWidth: "260px" }}>
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"].map((key, i) => (
             <button
               key={i}
               onClick={() => (key === "⌫" ? handleBackspace() : key && handleKey(key))}
               disabled={loading || !key}
-              className={`aspect-square rounded-lg border border-[#e6e0d4] bg-white text-lg font-semibold
-                hover:bg-[#faf6f0] hover:border-amber-600 active:bg-amber-50 active:scale-95 transition-all
-                disabled:opacity-30 ${!key ? "invisible" : ""} ${
-                key === "⌫" ? "text-xs text-gray-400" : ""
-              }`}
+              className={`rounded-lg border border-[#e6e0d4] dark:border-[#2e2a25] bg-white dark:bg-[#1c1917]
+                text-[#1c1915] dark:text-[#f5efe5] text-base font-semibold
+                hover:bg-[#faf6f0] dark:hover:bg-[#2a2620] hover:border-amber-600
+                active:bg-amber-50 dark:active:bg-amber-950/30 active:scale-95
+                transition-all disabled:opacity-30 ${!key ? "invisible" : ""}
+                flex items-center justify-center`}
+              style={{ height: "52px", fontSize: "18px" }}
             >
-              {key}
+              {key === "⌫" ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-gray-400 dark:text-[#a8a29e]">
+                  <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+                  <line x1="18" y1="9" x2="12" y2="15" />
+                  <line x1="12" y1="9" x2="18" y2="15" />
+                </svg>
+              ) : (
+                key
+              )}
             </button>
           ))}
         </div>
 
-        {/* Login button — visible once 4-digit PIN is entered.
-            Auto-submit still happens on 4th digit, but this gives a
-            manual fallback for users who clear and re-type. */}
+        {/* Login button */}
         <button
           onClick={() => handleLogin()}
           disabled={!pinComplete || loading}
-          className={`mt-5 w-full py-3 rounded-lg font-semibold text-sm transition-all ${
+          className={`mt-4 w-full py-2.5 rounded-lg font-semibold text-sm transition-all ${
             pinComplete && !loading
               ? "bg-amber-600 text-white hover:bg-amber-700 active:scale-95 shadow-md"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "bg-gray-100 dark:bg-[#2a2620] text-gray-400 dark:text-[#787468] cursor-not-allowed"
           }`}
         >
           {loading ? "Signing in…" : "Login"}
         </button>
 
         {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
-        <p className="text-[10px] text-gray-400 mt-4 tracking-wider">
+        <p className="text-[10px] text-gray-400 dark:text-[#787468] mt-4 tracking-wider">
           Made &amp; Maintained By: GuardianX
-        </p>
-        <p className="text-[9px] text-gray-300 mt-1">
-          Tip: type digits on keyboard or use the on-screen pad
         </p>
       </div>
     </div>
