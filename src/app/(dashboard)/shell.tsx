@@ -74,9 +74,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-[#faf6f0] w-full overflow-x-hidden">
-      {/* Sidebar */}
+      {/* Sidebar — sticky + h-screen so it stays in place while main
+          content scrolls. The nav inside scrolls independently. */}
       <aside
         className={`w-60 bg-[#f5efe5] border-r border-[#e6e0d4] flex flex-col shrink-0
+          sticky top-0 h-screen
           max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:transition-transform max-lg:shadow-2xl
           ${mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full"}`}
       >

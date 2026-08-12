@@ -34,31 +34,28 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  /* Prevent ALL horizontal scroll + bouncy swipe gestures.
-     overflow-x: hidden stops horizontal overflow at the page level.
-     overscroll-behavior: none stops the iOS rubber-band / Chrome
-     pull-to-refresh / two-finger swipe bounce at the page level. */
+  /* Prevent horizontal scroll only — don't touch vertical scroll.
+     overflow-x: hidden stops horizontal overflow at the page level. */
   overflow-x: hidden;
-  overscroll-behavior: none;
-  /* touch-action: pan-y pan-x means the browser handles only vertical
-     and horizontal pan with one finger, but disables pinch-zoom and
-     double-tap zoom (kills the "two-finger bounce" feeling). */
-  touch-action: pan-x pan-y;
-  -webkit-overflow-scrolling: touch;
-  /* Prevent text size adjust on orientation change (iOS) */
+  /* overscroll-behavior-y: none prevents the vertical rubber-band /
+     pull-to-refresh bounce. We do NOT use overscroll-behavior: none
+     because that also blocks horizontal overscroll inside containers
+     which can break inner scroll areas. */
+  overscroll-behavior-y: none;
+  /* DO NOT set touch-action — it breaks trackpad/mouse scroll on
+     desktop browsers. The default (auto) works correctly everywhere. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* Disable tap highlight color (iOS) — looks more app-like */
   -webkit-tap-highlight-color: transparent;
 }
 
 html {
-  /* Clamp horizontal scroll on the root element too */
+  /* overflow-x: hidden on html too — catches edge cases.
+     Note: this does NOT affect vertical scroll — overflow-y stays
+     visible/auto by default, so the page scrolls normally. */
   overflow-x: hidden;
-  /* overscroll-behavior: none on root too — kills the page-level
-     bounce entirely. Combined with body, this catches everything. */
-  overscroll-behavior: none;
-  /* Smooth vertical scroll only */
+  /* Prevent vertical bounce at the root level (iOS rubber-band) */
+  overscroll-behavior-y: none;
   scroll-behavior: smooth;
 }
 
