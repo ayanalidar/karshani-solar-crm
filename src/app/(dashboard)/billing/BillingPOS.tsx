@@ -52,6 +52,10 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<{ invoiceNo: string; invoiceId: string } | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [financeAmount, setFinanceAmount] = useState(0);
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
 
   const filteredProducts = useMemo(() => {
     if (!search) return products;
@@ -109,6 +113,9 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
           customerId: customerId || undefined,
           customerName,
           items: cart.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+          paymentMethod,
+          paidAmount: paidAmount || undefined,
+          financeAmount: financeAmount || undefined,
         }),
       });
       if (!res.ok) {
@@ -120,6 +127,9 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
       setCart([]);
       setWalkInName("");
       setCustomerId("");
+      setPaidAmount(0);
+      setFinanceAmount(0);
+      setShowPaymentOptions(false);
       router.refresh();
     } catch (e: any) {
       setError(e.message);
@@ -274,6 +284,42 @@ export function BillingPOS({ products: initialProducts, customers: initialCustom
           </div>
 
           {error && <div className="text-red-600 text-xs bg-red-50 border border-red-200 px-2 py-1.5 rounded mt-2">{error}</div>}
+
+          {/* Payment options */}
+          <button
+            onClick={() => setShowPaymentOptions(!showPaymentOptions)}
+            className="w-full mt-2 text-xs text-amber-700 dark:text-amber-400 hover:underline text-left"
+          >
+            {showPaymentOptions ? "▼ Hide payment options" : "▶ Payment & Finance options"}
+          </button>
+          {showPaymentOptions && (
+            <div className="mt-2 p-3 bg-[#faf6f0] dark:bg-[#0c0a09] rounded-md space-y-2">
+              <div>
+                <label className="block text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] mb-1">Payment Method</label>
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]">
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI</option>
+                  <option value="dbt">DBT (Bank Transfer)</option>
+                  <option value="bank_finance">Bank Finance</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] mb-1">Amount Paid Now (₹)</label>
+                <input type="number" value={paidAmount} onChange={(e) => setPaidAmount(Number(e.target.value))} placeholder="0" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
+                <button onClick={() => setPaidAmount(grandTotal)} className="text-[10px] text-amber-700 dark:text-amber-400 hover:underline mt-0.5">Set full amount</button>
+              </div>
+              {paymentMethod === "bank_finance" && (
+                <div>
+                  <label className="block text-[10px] font-semibold text-[#787468] dark:text-[#a8a29e] mb-1">Bank Finance Amount (₹)</label>
+                  <input type="number" value={financeAmount} onChange={(e) => setFinanceAmount(Number(e.target.value))} placeholder="0" className="w-full px-2 py-1.5 border border-[#e6e0d4] dark:border-[#2e2a25] rounded text-xs bg-white dark:bg-[#1c1917] text-[#1c1915] dark:text-[#f5efe5]" />
+                  <div className="text-[10px] text-[#787468] dark:text-[#a8a29e] mt-0.5">
+                    Balance after finance: {formatINR(grandTotal - paidAmount - financeAmount)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             onClick={checkout}
