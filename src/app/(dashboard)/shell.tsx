@@ -79,11 +79,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex h-screen bg-[#faf6f0] w-full overflow-hidden">
-      {/* Sidebar — h-screen so it stays pinned. Nav scrolls internally. */}
+    <div className="flex h-screen bg-[#faf6f0] dark:bg-[#0c0a09] w-full overflow-hidden">
+      {/* Sidebar — h-screen so it stays pinned. Nav scrolls internally.
+          Hidden on mobile (max-lg) — replaced by drawer. */}
       <aside
-        className={`w-60 bg-[#f5efe5] border-r border-[#e6e0d4] flex flex-col shrink-0 h-screen
-          max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:transition-transform max-lg:shadow-2xl
+        className={`w-56 bg-[#f5efe5] dark:bg-[#161310] border-r border-[#e6e0d4] dark:border-[#2e2a25] flex flex-col shrink-0 h-screen
+          max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:w-72 max-lg:transition-transform max-lg:shadow-2xl
           ${mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full"}`}
       >
         <div className="p-5 border-b border-[#e6e0d4]">

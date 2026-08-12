@@ -227,7 +227,7 @@ export function ProductForm({
         <label className="block text-xs font-semibold text-[#504d44] mb-1">Name *</label>
         <input type="text" value={form.name} onChange={(e) => set("name", e.target.value)} className={inputCls} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-3">
         <div>
           <label className="block text-xs font-semibold text-[#504d44] mb-1">Category</label>
           <CategorySelect value={form.category} onChange={(v) => set("category", v)} inputCls={inputCls} existingCategories={existingCategories} />
@@ -241,7 +241,7 @@ export function ProductForm({
         <label className="block text-xs font-semibold text-[#504d44] mb-1">Spec</label>
         <input type="text" value={form.spec} onChange={(e) => set("spec", e.target.value)} className={inputCls} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-3">
         <div>
           <label className="block text-xs font-semibold text-[#504d44] mb-1">HSN Code</label>
           <input type="text" value={form.hsnCode} onChange={(e) => set("hsnCode", e.target.value)} className={inputCls + " font-mono"} />
@@ -257,7 +257,7 @@ export function ProductForm({
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-3">
         <div>
           <label className="block text-xs font-semibold text-[#504d44] mb-1">Unit Price (₹)</label>
           <input

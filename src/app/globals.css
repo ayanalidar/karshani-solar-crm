@@ -97,6 +97,91 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* ============================================================
+   MOBILE RESPONSIVE — auto-adjust all cards, grids, tables
+   ============================================================ */
+
+/* Cards: auto-fill with min width so they wrap naturally on any screen */
+.grid {
+  gap: 1rem;
+}
+
+/* On very small screens (phones), reduce padding everywhere */
+@media (max-width: 640px) {
+  main {
+    padding: 0.75rem !important;
+  }
+  /* KPI cards: 1 column on phones */
+  .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+  .grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+  /* Fixed-width grids: stack on phones */
+  .grid-cols-\[2fr_1fr\],
+  .grid-cols-\[1fr_360px\],
+  .grid-cols-\[1fr_240px\],
+  .grid-cols-\[3fr_2fr\] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Table font sizes: smaller on phones */
+  table {
+    font-size: 12px;
+  }
+  th, td {
+    padding: 6px 8px !important;
+  }
+  /* Header: smaller padding on phones */
+  header {
+    padding: 0.5rem 1rem !important;
+  }
+  h1 {
+    font-size: 1.1rem !important;
+  }
+  /* KPI card values: smaller on phones */
+  .font-serif {
+    line-height: 1.2;
+  }
+  /* Buttons: full width on phones in action bars */
+  .flex.items-center.gap-2.flex-wrap > a,
+  .flex.items-center.gap-2.flex-wrap > button {
+    flex: 1;
+    min-width: calc(50% - 4px);
+    justify-content: center;
+  }
+  /* Modals: full width on phones */
+  .fixed.inset-0 {
+    padding: 0 !important;
+  }
+  .fixed.inset-0 > div {
+    max-width: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    min-height: 100vh;
+  }
+}
+
+/* Tablet (641px - 1024px): 2 columns for grids */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Auto-fill grids: adjust minmax for smaller screens */
+@media (max-width: 640px) {
+  .grid-cols-\[repeat\(auto-fill\,minmax\(240px\,1fr\)\)\] {
+    grid-template-columns: 1fr !important;
+  }
+  .grid-cols-\[repeat\(auto-fill\,minmax\(150px\,1fr\)\)\] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
 html {
   overflow-x: hidden;
   overscroll-behavior-y: none;
