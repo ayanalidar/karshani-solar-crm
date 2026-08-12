@@ -1,14 +1,18 @@
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-check";
 import { NextResponse } from "next/server";
-import { rawInsert, toSnake, toCamel } from "@/lib/raw-db";
+import { rawInsert, rawSelect, toSnake, toCamel, toCamelArray } from "@/lib/raw-db";
 import { todayISO } from "@/lib/format";
 
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  const contracts = await prisma.amcContract.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
-  return NextResponse.json(contracts);
+  let contracts = await prisma.amcContract.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
+  if (!contracts || contracts.length === 0) {
+    const rows = await rawSelect("amc_contracts", "created_at.desc", 100);
+    if (rows) contracts = toCamelArray(rows) as any;
+  }
+  return NextResponse.json(contracts || []);
 }
 
 export async function POST(request: Request) {

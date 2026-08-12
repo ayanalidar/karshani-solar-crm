@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-check";
 import { NextResponse } from "next/server";
-import { rawInsert, toSnake, toCamel } from "@/lib/raw-db";
+import { rawInsert, rawSelect, toSnake, toCamel, toCamelArray } from "@/lib/raw-db";
 
 export async function GET() {
   const unauth = await requireAuth();

@@ -1,14 +1,18 @@
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-check";
 import { NextResponse } from "next/server";
-import { rawInsert, toSnake, toCamel } from "@/lib/raw-db";
+import { rawInsert, rawSelect, toSnake, toCamel, toCamelArray } from "@/lib/raw-db";
 import { todayISO } from "@/lib/format";
 
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  const entries = await prisma.cashBookEntry.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
-  return NextResponse.json(entries);
+  let entries = await prisma.cashBookEntry.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
+  if (!entries || entries.length === 0) {
+    const rows = await rawSelect("cash_book", "created_at.desc", 100);
+    if (rows) entries = toCamelArray(rows) as any;
+  }
+  return NextResponse.json(entries || []);
 }
 
 export async function POST(request: Request) {
