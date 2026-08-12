@@ -52,7 +52,7 @@ export async function ProformaView({
   autoPrint?: boolean;
   recordPrintUrl?: string;
 }) {
-  const titleText = kind === "proforma" ? "proforma invoice" : "tax invoice";
+  const titleText = kind === "proforma" ? "QUOTATION" : "TAX INVOICE";
   const docLabel = kind === "proforma" ? "Estimate Nos." : "Invoice No.";
   const dateLabel = kind === "proforma" ? "Date" : "Invoice Date";
   const customerHeader = kind === "proforma" ? "Estimate For:" : "Bill To:";
@@ -109,7 +109,7 @@ export async function ProformaView({
         .logo-row img { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; }
         .company-name { font-size: 20px; font-weight: bold; letter-spacing: 0.5px; }
         .title-row { text-align: center; margin: 14px 0 8px; }
-        .title-row h1 { font-size: 24px; font-weight: bold; text-transform: lowercase; letter-spacing: 1px; margin: 0; }
+        .title-row h1 { font-size: 24px; font-weight: bold; letter-spacing: 1px; margin: 0; }
         .bank-block { display: grid; grid-template-columns: 100px 1fr; gap: 12px; align-items: start; }
         .qr-placeholder { width: 90px; height: 90px; border: 1px dashed #888; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #666; text-align: center; background: #fafafa; }
         .sign-block { text-align: center; width: 200px; }
