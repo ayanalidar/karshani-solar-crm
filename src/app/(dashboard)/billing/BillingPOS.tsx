@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatINR } from "@/lib/format";
@@ -27,7 +27,23 @@ type CartItem = {
   quantity: number;
 };
 
-export function BillingPOS({ products, customers }: { products: Product[]; customers: Customer[] }) {
+export function BillingPOS({ products: initialProducts, customers: initialCustomers }: { products: Product[]; customers: Customer[] }) {
+  const [products, setProducts] = useState(initialProducts);
+  const [customers, setCustomers] = useState(initialCustomers);
+
+  // Always fetch fresh data on mount — fixes "no products showing"
+  useEffect(() => {
+    (async () => {
+      try {
+        const [pRes, cRes] = await Promise.all([
+          fetch("/api/products", { cache: "no-store" }),
+          fetch("/api/customers", { cache: "no-store" }),
+        ]);
+        if (pRes.ok) setProducts(await pRes.json());
+        if (cRes.ok) setCustomers(await cRes.json());
+      } catch {}
+    })();
+  }, []);
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);

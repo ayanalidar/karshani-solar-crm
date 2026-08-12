@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { SearchInput } from "@/components/SearchInput";
@@ -21,10 +21,20 @@ type Quotation = {
   createdAt: string | Date;
 };
 
-export function QuotationsList({ quotations }: { quotations: Quotation[] }) {
+export function QuotationsList({ quotations: initialQuotations }: { quotations: Quotation[] }) {
   const router = useRouter();
+  const [quotations, setQuotations] = useState(initialQuotations);
   const [search, setSearch] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch("/api/quotations", { cache: "no-store" });
+      if (res.ok) setQuotations(await res.json());
+    } catch {}
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
 
   const filtered = search
     ? quotations.filter((q) =>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { SearchInput } from "@/components/SearchInput";
@@ -19,11 +19,21 @@ type Invoice = {
   createdAt: string | Date;
 };
 
-export function InvoicesList({ invoices }: { invoices: Invoice[] }) {
+export function InvoicesList({ invoices: initialInvoices }: { invoices: Invoice[] }) {
   const router = useRouter();
+  const [invoices, setInvoices] = useState(initialInvoices);
   const [search, setSearch] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch("/api/invoices", { cache: "no-store" });
+      if (res.ok) setInvoices(await res.json());
+    } catch {}
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
 
   const filtered = invoices.filter((inv) => {
     const matchesSearch = search

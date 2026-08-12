@@ -30,9 +30,25 @@ type Line = {
   gstPercentage: number;
 };
 
-export function QuotationBuilder({ products, customers }: { products: Product[]; customers: Customer[] }) {
+export function QuotationBuilder({ products: initialProducts, customers: initialCustomers }: { products: Product[]; customers: Customer[] }) {
   const router = useRouter();
   const params = useSearchParams();
+  const [products, setProducts] = useState(initialProducts);
+  const [customers, setCustomers] = useState(initialCustomers);
+
+  // Always fetch fresh data on mount — fixes "no products showing"
+  useEffect(() => {
+    (async () => {
+      try {
+        const [pRes, cRes] = await Promise.all([
+          fetch("/api/products", { cache: "no-store" }),
+          fetch("/api/customers", { cache: "no-store" }),
+        ]);
+        if (pRes.ok) setProducts(await pRes.json());
+        if (cRes.ok) setCustomers(await cRes.json());
+      } catch {}
+    })();
+  }, []);
 
   const initialCustomer = params.get("customerId") || "";
   const [customerId, setCustomerId] = useState(initialCustomer);
