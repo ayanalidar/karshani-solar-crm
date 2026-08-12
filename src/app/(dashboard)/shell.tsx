@@ -4,40 +4,47 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import { useRefreshOnMount } from "@/hooks/useRefreshOnMount";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { useTheme } from "@/components/ThemeProvider";
+import {
+  DashboardIcon, InventoryIcon, BillingIcon, CustomersIcon, EnquiriesIcon,
+  QuotationsIcon, InvoicesIcon, SuppliersIcon, ExpensesIcon, CashbookIcon,
+  ReportIcon, InstallationsIcon, AmcIcon, EmployeesIcon, UsersIcon, SettingsIcon,
+  LogoutIcon, MenuIcon, SunIcon, MoonIcon
+} from "@/components/Icons";
 
 type NavItem = {
   href?: string;
   label: string;
-  icon?: string;
+  icon?: React.ComponentType<{ className?: string }>;
   type?: "group" | "item";
   badgeKey?: "lowStock" | "amcExpiring";
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: "◐" },
-  { href: "/inventory", label: "Inventory", icon: "⊞", badgeKey: "lowStock" },
+  { href: "/", label: "Dashboard", icon: DashboardIcon },
+  { href: "/inventory", label: "Inventory", icon: InventoryIcon, badgeKey: "lowStock" },
   { type: "group", label: "Sales" },
-  { href: "/billing", label: "Billing", icon: "₹" },
-  { href: "/customers", label: "Customers", icon: "👥" },
-  { href: "/enquiries", label: "Enquiries", icon: "💬" },
-  { href: "/quotations", label: "Quotations", icon: "📄" },
-  { href: "/invoices", label: "Invoices", icon: "📋" },
+  { href: "/billing", label: "Billing", icon: BillingIcon },
+  { href: "/customers", label: "Customers", icon: CustomersIcon },
+  { href: "/enquiries", label: "Enquiries", icon: EnquiriesIcon },
+  { href: "/quotations", label: "Quotations", icon: QuotationsIcon },
+  { href: "/invoices", label: "Invoices", icon: InvoicesIcon },
   { type: "group", label: "Procurement" },
-  { href: "/suppliers", label: "Suppliers & PO", icon: "📦" },
+  { href: "/suppliers", label: "Suppliers & PO", icon: SuppliersIcon },
   { type: "group", label: "Finance" },
-  { href: "/expenses", label: "Expenses", icon: "💰" },
-  { href: "/cashbook", label: "Cash Book", icon: "📒" },
-  { href: "/reports/gst", label: "GST Report", icon: "📊" },
+  { href: "/expenses", label: "Expenses", icon: ExpensesIcon },
+  { href: "/cashbook", label: "Cash Book", icon: CashbookIcon },
+  { href: "/reports/gst", label: "GST Report", icon: ReportIcon },
   { type: "group", label: "Operations" },
-  { href: "/installations", label: "Installations", icon: "⚡" },
-  { href: "/amc", label: "AMC & Warranty", icon: "🛡️", badgeKey: "amcExpiring" },
+  { href: "/installations", label: "Installations", icon: InstallationsIcon },
+  { href: "/amc", label: "AMC & Warranty", icon: AmcIcon, badgeKey: "amcExpiring" },
   { type: "group", label: "People" },
-  { href: "/employees", label: "Employees", icon: "🧑‍💼" },
-  { href: "/users", label: "Users", icon: "🔑" },
+  { href: "/employees", label: "Employees", icon: EmployeesIcon },
+  { href: "/users", label: "Users", icon: UsersIcon },
   { type: "group", label: "System" },
-  { href: "/settings", label: "Settings", icon: "⚙️" },
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -51,6 +58,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // table triggers a debounced router.refresh() so lists + KPIs update
   // instantly without manual page reload.
   useRealtimeRefresh();
+
+  // Refresh router cache on navigation — fixes "data not visible until
+  // manual refresh" issue when switching between sidebar tabs.
+  useRefreshOnMount();
 
   // Fetch badges on mount + every 60s
   useEffect(() => {
@@ -99,24 +110,23 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   setMobileOpen(false);
                   // Bust the Router Cache so the destination page fetches
                   // fresh data instead of showing a stale cached version.
-                  // This fixes the "tab switching shows no data" issue.
                   router.refresh();
                 }}
                 prefetch
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                   pathname === item.href
-                    ? "bg-amber-50 text-amber-700"
-                    : "text-[#504d44] hover:bg-[#faf6f0] hover:text-[#1c1915]"
+                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 shadow-sm"
+                    : "text-[#504d44] dark:text-[#a8a29e] hover:bg-[#faf6f0] dark:hover:bg-[#2a2620] hover:text-[#1c1915] dark:hover:text-[#f5efe5]"
                 }`}
               >
-                <span className="w-4 text-center text-xs">{item.icon}</span>
+                {item.icon && <item.icon className="w-4 h-4 shrink-0" />}
                 <span className="flex-1">{item.label}</span>
                 {item.badgeKey && badges[item.badgeKey] ? (
                   <span
                     className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                       item.badgeKey === "lowStock"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-amber-100 text-amber-700"
+                        ? "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400"
+                        : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400"
                     }`}
                   >
                     {badges[item.badgeKey]}
@@ -126,12 +136,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )
           )}
         </nav>
-        <div className="p-3 border-t border-[#e6e0d4]">
+        <div className="p-3 border-t border-[#e6e0d4] dark:border-[#2e2a25]">
           <button
             onClick={handleLogout}
-            className="text-xs text-[#787468] hover:text-red-600 w-full text-left py-1"
+            className="flex items-center gap-2.5 text-xs text-[#787468] dark:text-[#a8a29e] hover:text-red-600 dark:hover:text-red-400 w-full text-left py-2 px-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
           >
-            ⏻ Logout
+            <LogoutIcon className="w-4 h-4 shrink-0" />
+            Logout
           </button>
         </div>
       </aside>
@@ -144,13 +155,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
       {/* Main — bounded height (h-screen via parent), main scrolls internally */}
       <div className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
         <InstallPrompt />
-        <header className="shrink-0 sticky top-0 z-10 bg-[#faf6f0] dark:bg-[#0f0e0c] border-b border-[#e6e0d4] dark:border-[#2e2a25] px-8 py-4 flex items-center justify-between gap-4 max-lg:px-4">
-          <div className="flex items-center gap-4">
+        <header className="shrink-0 sticky top-0 z-10 bg-[#faf6f0]/95 dark:bg-[#0c0a09]/95 backdrop-blur-sm border-b border-[#e6e0d4] dark:border-[#2e2a25] px-8 py-3 flex items-center justify-between gap-4 max-lg:px-4">
+          <div className="flex items-center gap-3">
             <button
-              className="lg:hidden w-8 h-8 flex items-center justify-center rounded border border-[#e6e0d4] dark:border-[#2e2a25] bg-white dark:bg-[#1a1815] text-lg"
+              className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg border border-[#e6e0d4] dark:border-[#2e2a25] bg-white dark:bg-[#1c1917] text-[#504d44] dark:text-[#a8a29e] hover:bg-[#faf6f0] dark:hover:bg-[#2a2620]"
               onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
             >
-              ☰
+              <MenuIcon className="w-5 h-5" />
             </button>
             <h1 className="font-serif text-xl text-[#1c1915] dark:text-[#f5efe5] tracking-tight">
               {NAV_ITEMS.find((i) => i.href === pathname)?.label || "Dashboard"}
@@ -158,11 +170,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <button
             onClick={toggleTheme}
-            className="w-9 h-9 flex items-center justify-center rounded-md border border-[#e6e0d4] dark:border-[#2e2a25] bg-white dark:bg-[#1a1815] text-base hover:bg-[#faf6f0] dark:hover:bg-[#2a2620]"
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-[#e6e0d4] dark:border-[#2e2a25] bg-white dark:bg-[#1c1917] text-[#504d44] dark:text-[#a8a29e] hover:bg-[#faf6f0] dark:hover:bg-[#2a2620] hover:border-amber-400 dark:hover:border-amber-600"
             aria-label="Toggle dark mode"
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
-            {theme === "dark" ? "☀️" : "🌙"}
+            {theme === "dark" ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
           </button>
         </header>
         <main className="p-8 max-lg:p-4 flex-1 overflow-y-auto overscroll-contain">{children}</main>

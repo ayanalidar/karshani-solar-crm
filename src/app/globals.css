@@ -1,85 +1,125 @@
 @import "tailwindcss";
 
-/* Enable class-based dark mode for Tailwind v4 (uses .dark on <html>) */
+/* Enable class-based dark mode for Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ============================================================
+   PREMIUM COLOR SYSTEM — Light + Dark themes
+   ============================================================ */
 :root {
   --background: #faf6f0;
   --foreground: #1c1915;
   --card: #ffffff;
   --card-border: #e6e0d4;
+  --card-border-hover: #d97706;
   --muted: #787468;
+  --muted-foreground: #504d44;
   --accent: #d97706;
+  --accent-foreground: #ffffff;
+  --accent-light: #fef3c7;
   --sidebar: #f5efe5;
+  --sidebar-foreground: #1c1915;
+  --sidebar-muted: #787468;
+  --sidebar-active: #fef3c7;
+  --sidebar-active-foreground: #92400e;
+  --input-bg: #ffffff;
+  --input-border: #e6e0d4;
+  --table-hover: rgba(217, 119, 6, 0.04);
+  --shadow-color: rgba(28, 25, 21, 0.08);
+  --shadow-color-lg: rgba(28, 25, 21, 0.12);
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
+  --info: #2563eb;
+  --info-bg: #dbeafe;
 }
 
 .dark {
-  --background: #0f0e0c;
+  --background: #0c0a09;
   --foreground: #f5efe5;
-  --card: #1a1815;
+  --card: #1c1917;
   --card-border: #2e2a25;
-  --muted: #9c958a;
+  --card-border-hover: #f59e0b;
+  --muted: #a8a29e;
+  --muted-foreground: #d6cfc5;
   --accent: #f59e0b;
-  --sidebar: #15130f;
+  --accent-foreground: #1c1917;
+  --accent-light: #422006;
+  --sidebar: #161310;
+  --sidebar-foreground: #f5efe5;
+  --sidebar-muted: #a8a29e;
+  --sidebar-active: #422006;
+  --sidebar-active-foreground: #f59e0b;
+  --input-bg: #1c1917;
+  --input-border: #2e2a25;
+  --table-hover: rgba(245, 158, 11, 0.08);
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --shadow-color-lg: rgba(0, 0, 0, 0.6);
+  --modal-overlay: rgba(0, 0, 0, 0.75);
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #fbbf24;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #60a5fa;
+  --info-bg: #172554;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-sidebar: var(--sidebar);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  /* Prevent horizontal scroll only — don't touch vertical scroll.
-     overflow-x: hidden stops horizontal overflow at the page level. */
   overflow-x: hidden;
-  /* overscroll-behavior-y: none prevents the vertical rubber-band /
-     pull-to-refresh bounce. We do NOT use overscroll-behavior: none
-     because that also blocks horizontal overscroll inside containers
-     which can break inner scroll areas. */
   overscroll-behavior-y: none;
-  /* DO NOT set touch-action — it breaks trackpad/mouse scroll on
-     desktop browsers. The default (auto) works correctly everywhere. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 html {
-  /* overflow-x: hidden on html too — catches edge cases.
-     Note: this does NOT affect vertical scroll — overflow-y stays
-     visible/auto by default, so the page scrolls normally. */
   overflow-x: hidden;
-  /* Prevent vertical bounce at the root level (iOS rubber-band) */
   overscroll-behavior-y: none;
   scroll-behavior: smooth;
 }
 
-/* Force long words/URLs to wrap instead of overflowing their container */
 table, td, th {
   word-break: break-word;
   overflow-wrap: anywhere;
 }
 
-/* Make sure SVG charts scale down properly */
 svg {
   max-width: 100%;
   height: auto;
 }
 
-/* Prevent modals from causing page scroll behind them */
 body:has(.modal-open) {
   overflow: hidden;
 }
 
-/* Scrollable containers: contain ONLY horizontal overscroll so vertical
-   scroll propagates to the parent. This fixes the "scroll doesn't work
-   on tables/cards" bug — vertical scroll over a table now scrolls the
-   page instead of dying on the table. */
+/* ============================================================
+   SCROLL CONTAINERS
+   ============================================================ */
 .overflow-x-auto {
   overscroll-behavior-x: contain;
   overscroll-behavior-y: auto;
@@ -88,57 +128,171 @@ body:has(.modal-open) {
 .overflow-auto {
   overscroll-behavior: contain;
 }
-
-/* Sidebar nav should contain its own scroll */
 nav {
   overscroll-behavior: contain;
 }
 
-/* Make all the hardcoded color classes theme-aware via CSS variables.
-   This is the trick: classes like bg-[#faf6f0] are kept as the light
-   default, but the dark variant overrides them via attribute selectors. */
+/* ============================================================
+   PREMIUM DARK MODE OVERRIDES
+   Override EVERY hardcoded light-mode color class with dark equivalent.
+   This is the comprehensive fix for white-on-white text issues.
+   ============================================================ */
 
-/* Light mode backgrounds → dark mode backgrounds */
+/* --- Backgrounds --- */
 .dark .bg-\[\#faf6f0\] { background-color: var(--background) !important; }
 .dark .bg-\[\#f5efe5\] { background-color: var(--sidebar) !important; }
 .dark .bg-white { background-color: var(--card) !important; }
 
-/* Light mode borders → dark mode borders */
-.dark .border-\[\#e6e0d4\],
-.dark .border-\[\#ede8dc\],
-.dark .border-\[\#ede8dc\] { border-color: var(--card-border) !important; }
+/* --- Light tinted backgrounds (amber, yellow, blue, green, red, purple, orange) → dark equivalents --- */
+.dark .bg-amber-50 { background-color: var(--warning-bg) !important; }
+.dark .bg-amber-100 { background-color: var(--warning-bg) !important; }
+.dark .bg-yellow-50 { background-color: var(--warning-bg) !important; }
+.dark .bg-blue-50 { background-color: var(--info-bg) !important; }
+.dark .bg-green-50 { background-color: var(--success-bg) !important; }
+.dark .bg-green-100 { background-color: var(--success-bg) !important; }
+.dark .bg-red-50 { background-color: var(--danger-bg) !important; }
+.dark .bg-red-100 { background-color: var(--danger-bg) !important; }
+.dark .bg-purple-50 { background-color: #3b0764 !important; }
+.dark .bg-orange-50 { background-color: var(--warning-bg) !important; }
+.dark .bg-gray-50 { background-color: var(--card) !important; }
+.dark .bg-gray-100 { background-color: var(--card-border) !important; }
 
-/* Light mode text colors → dark mode text colors */
+/* --- Borders --- */
+.dark .border-\[\#e6e0d4\] { border-color: var(--card-border) !important; }
+.dark .border-\[\#ede8dc\] { border-color: var(--card-border) !important; }
+.dark .border-amber-200 { border-color: var(--warning) !important; opacity: 0.4; }
+.dark .border-amber-600 { border-color: var(--accent) !important; }
+.dark .border-yellow-200 { border-color: var(--warning) !important; opacity: 0.4; }
+.dark .border-blue-200 { border-color: var(--info) !important; opacity: 0.4; }
+.dark .border-green-200 { border-color: var(--success) !important; opacity: 0.4; }
+.dark .border-red-200 { border-color: var(--danger) !important; opacity: 0.4; }
+.dark .border-purple-200 { border-color: #c084fc !important; opacity: 0.4; }
+.dark .border-orange-200 { border-color: var(--warning) !important; opacity: 0.4; }
+.dark .border-gray-200 { border-color: var(--card-border) !important; }
+
+/* --- Text colors --- */
 .dark .text-\[\#1c1915\] { color: var(--foreground) !important; }
-.dark .text-\[\#504d44\] { color: #c8c0b3 !important; }
+.dark .text-\[\#504d44\] { color: var(--muted-foreground) !important; }
 .dark .text-\[\#787468\] { color: var(--muted) !important; }
 
-/* Inputs in dark mode */
+/* Amber/orange text — keep visible in dark mode */
+.dark .text-amber-700 { color: #fbbf24 !important; }
+.dark .text-amber-600 { color: #f59e0b !important; }
+.dark .text-amber-800 { color: #fcd34d !important; }
+.dark .text-orange-700 { color: #fbbf24 !important; }
+.dark .text-orange-600 { color: #f59e0b !important; }
+
+/* Green/red/yellow/blue/purple text — dark mode equivalents */
+.dark .text-green-700 { color: #4ade80 !important; }
+.dark .text-green-600 { color: #4ade80 !important; }
+.dark .text-red-700 { color: #f87171 !important; }
+.dark .text-red-600 { color: #f87171 !important; }
+.dark .text-yellow-600 { color: #fbbf24 !important; }
+.dark .text-yellow-700 { color: #fbbf24 !important; }
+.dark .text-blue-600 { color: #60a5fa !important; }
+.dark .text-blue-700 { color: #60a5fa !important; }
+.dark .text-purple-700 { color: #c084fc !important; }
+.dark .text-gray-600 { color: var(--muted) !important; }
+.dark .text-gray-700 { color: var(--muted-foreground) !important; }
+.dark .text-gray-400 { color: var(--muted) !important; }
+
+/* --- White text on colored buttons stays white (correct) --- */
+/* .text-white should NOT be overridden — it's used on amber/green/red
+   buttons which have dark backgrounds in dark mode too */
+
+/* --- Inputs --- */
 .dark input,
 .dark select,
 .dark textarea {
-  background-color: var(--card);
-  color: var(--foreground);
-  border-color: var(--card-border);
+  background-color: var(--input-bg) !important;
+  color: var(--foreground) !important;
+  border-color: var(--input-border) !important;
 }
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: var(--muted);
-  opacity: 0.7;
+  color: var(--muted) !important;
+  opacity: 0.6;
+}
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: var(--accent) !important;
+  outline: none;
+}
+.dark select option {
+  background-color: var(--card) !important;
+  color: var(--foreground) !important;
 }
 
-/* Tables in dark mode */
-.dark table tbody tr:hover { background-color: rgba(245, 158, 11, 0.08) !important; }
+/* --- Tables --- */
+.dark table tbody tr:hover { background-color: var(--table-hover) !important; }
+.dark thead tr { border-color: var(--card-border) !important; }
 
-/* Modal in dark mode */
-.dark .bg-black\/40 { background-color: rgba(0, 0, 0, 0.7) !important; }
+/* --- Modal overlay --- */
+.dark .bg-black\/40 { background-color: var(--modal-overlay) !important; }
+.dark .bg-black\/60 { background-color: var(--modal-overlay) !important; }
 
-/* Make sure status pills, badges, KPIs all remain visible in dark mode
-   (we don't override the colored pill backgrounds — they're already
-   readable on dark cards because they use light tints with dark text). */
+/* --- Hover backgrounds --- */
+.dark .hover\:bg-\[\#faf6f0\]:hover { background-color: var(--card-border) !important; }
+.dark .hover\:bg-amber-50:hover { background-color: var(--warning-bg) !important; }
+.dark .hover\:bg-red-50:hover { background-color: var(--danger-bg) !important; }
+.dark .hover\:bg-green-50:hover { background-color: var(--success-bg) !important; }
 
-/* Scrollbars in dark mode */
-.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
-.dark ::-webkit-scrollbar-track { background: var(--background); }
-.dark ::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 5px; }
-.dark ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+/* --- Premium shadows --- */
+.dark .shadow-md { box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -1px var(--shadow-color) !important; }
+.dark .shadow-xl { box-shadow: 0 20px 25px -5px var(--shadow-color-lg), 0 10px 10px -5px var(--shadow-color) !important; }
+.dark .shadow-2xl { box-shadow: 0 25px 50px -12px var(--shadow-color-lg) !important; }
+
+/* ============================================================
+   PREMIUM UI POLISH
+   ============================================================ */
+
+/* Smooth transitions on all interactive elements */
+button, a, input, select, textarea {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+/* Premium card hover effect */
+.bg-white, .dark .bg-white {
+  box-shadow: 0 1px 3px 0 var(--shadow-color);
+}
+.bg-white:hover, .dark .bg-white:hover {
+  box-shadow: 0 4px 6px -1px var(--shadow-color-lg), 0 2px 4px -1px var(--shadow-color);
+}
+
+/* Premium button hover — subtle lift */
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Focus rings — premium */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+}
+.dark input:focus, .dark select:focus, .dark textarea:focus {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+/* Premium scrollbar styling — both themes */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+.dark ::-webkit-scrollbar-thumb { background: #44403c; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #57534e; }
+
+/* Premium link underline animation */
+a { transition: color 0.15s ease; }
+
+/* Premium table row hover */
+tbody tr { transition: background-color 0.15s ease; }
+
+/* Premium status pills — subtle border + better contrast */
+.dark span[class*="bg-"] span[class*="text-"],
+.dark .rounded-full {
+  backdrop-filter: blur(8px);
+}
