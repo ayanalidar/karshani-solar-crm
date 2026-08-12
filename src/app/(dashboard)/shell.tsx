@@ -10,7 +10,7 @@ import {
   DashboardIcon, InventoryIcon, BillingIcon, CustomersIcon, EnquiriesIcon,
   QuotationsIcon, InvoicesIcon, SuppliersIcon, ExpensesIcon, CashbookIcon,
   ReportIcon, InstallationsIcon, AmcIcon, EmployeesIcon, UsersIcon, SettingsIcon,
-  LogoutIcon, MenuIcon, SunIcon, MoonIcon
+  LogoutIcon, MenuIcon, SunIcon, MoonIcon, LedgerIcon
 } from "@/components/Icons";
 
 type NavItem = {
@@ -33,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { type: "group", label: "Procurement" },
   { href: "/suppliers", label: "Suppliers & PO", icon: SuppliersIcon },
   { type: "group", label: "Finance" },
+  { href: "/ledger", label: "Ledger", icon: LedgerIcon },
   { href: "/expenses", label: "Expenses", icon: ExpensesIcon },
   { href: "/cashbook", label: "Cash Book", icon: CashbookIcon },
   { href: "/reports/gst", label: "GST Report", icon: ReportIcon },
