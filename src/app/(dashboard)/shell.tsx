@@ -73,12 +73,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#faf6f0] w-full overflow-x-hidden">
-      {/* Sidebar — sticky + h-screen so it stays in place while main
-          content scrolls. The nav inside scrolls independently. */}
+    <div className="flex h-screen bg-[#faf6f0] w-full overflow-hidden">
+      {/* Sidebar — h-screen so it stays pinned. Nav scrolls internally. */}
       <aside
-        className={`w-60 bg-[#f5efe5] border-r border-[#e6e0d4] flex flex-col shrink-0
-          sticky top-0 h-screen
+        className={`w-60 bg-[#f5efe5] border-r border-[#e6e0d4] flex flex-col shrink-0 h-screen
           max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:transition-transform max-lg:shadow-2xl
           ${mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full"}`}
       >
@@ -137,10 +135,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="lg:hidden fixed inset-0 bg-black/30 z-40" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Main */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      {/* Main — bounded height (h-screen via parent), main scrolls internally */}
+      <div className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
         <InstallPrompt />
-        <header className="sticky top-0 z-10 bg-[#faf6f0] dark:bg-[#0f0e0c] border-b border-[#e6e0d4] dark:border-[#2e2a25] px-8 py-4 flex items-center justify-between gap-4 max-lg:px-4">
+        <header className="shrink-0 sticky top-0 z-10 bg-[#faf6f0] dark:bg-[#0f0e0c] border-b border-[#e6e0d4] dark:border-[#2e2a25] px-8 py-4 flex items-center justify-between gap-4 max-lg:px-4">
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden w-8 h-8 flex items-center justify-center rounded border border-[#e6e0d4] dark:border-[#2e2a25] bg-white dark:bg-[#1a1815] text-lg"
@@ -161,7 +159,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
         </header>
-        <main className="p-8 max-lg:p-4 flex-1">{children}</main>
+        <main className="p-8 max-lg:p-4 flex-1 overflow-y-auto overscroll-contain">{children}</main>
       </div>
     </div>
   );
