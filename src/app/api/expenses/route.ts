@@ -6,7 +6,7 @@ import { todayISO } from "@/lib/format";
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  const expenses = await prisma.expense.findMany({ orderBy: { createdAt: "desc" } });
+  const expenses = await prisma.expense.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   return NextResponse.json(expenses);
 }
 

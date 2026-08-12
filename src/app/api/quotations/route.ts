@@ -6,9 +6,28 @@ import { todayISO } from "@/lib/format";
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
+  // List view: fetch only quotation fields (no items) to reduce egress.
+  // Items are fetched separately on the detail page.
   const quotations = await prisma.quotation.findMany({
     orderBy: { createdAt: "desc" },
-    include: { items: true },
+    take: 100,
+    select: {
+      id: true,
+      estimateNo: true,
+      customerName: true,
+      customerPhone: true,
+      customerLocation: true,
+      systemDescription: true,
+      subtotal: true,
+      gstTotal: true,
+      grandTotal: true,
+      quoteDate: true,
+      status: true,
+      createdAt: true,
+      customerId: true,
+      printedAt: true,
+      printCount: true,
+    },
   });
   return NextResponse.json(quotations);
 }

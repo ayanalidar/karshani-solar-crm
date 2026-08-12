@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
+  const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   // Strip PIN from list response — list view shouldn't expose PINs
   return NextResponse.json(users.map((u) => ({ id: u.id, name: u.name, role: u.role, createdAt: u.createdAt })));
 }

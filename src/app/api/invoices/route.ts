@@ -6,9 +6,27 @@ import { todayISO } from "@/lib/format";
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
+  // List view: fetch only invoice fields (no items) to reduce egress.
+  // Items are fetched separately on the detail page.
   const invoices = await prisma.invoice.findMany({
     orderBy: { createdAt: "desc" },
-    include: { items: true },
+    take: 100,
+    select: {
+      id: true,
+      invoiceNo: true,
+      customerName: true,
+      description: true,
+      subtotal: true,
+      gstTotal: true,
+      grandTotal: true,
+      invoiceDate: true,
+      dueDate: true,
+      status: true,
+      createdAt: true,
+      customerId: true,
+      printedAt: true,
+      printCount: true,
+    },
   });
   return NextResponse.json(invoices);
 }

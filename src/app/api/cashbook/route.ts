@@ -6,7 +6,7 @@ import { todayISO } from "@/lib/format";
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  const entries = await prisma.cashBookEntry.findMany({ orderBy: { createdAt: "desc" } });
+  const entries = await prisma.cashBookEntry.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   return NextResponse.json(entries);
 }
 

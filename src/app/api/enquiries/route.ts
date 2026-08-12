@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  const enquiries = await prisma.enquiry.findMany({ orderBy: { createdAt: "desc" } });
+  const enquiries = await prisma.enquiry.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   return NextResponse.json(enquiries);
 }
 

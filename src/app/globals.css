@@ -76,17 +76,20 @@ body:has(.modal-open) {
   overflow: hidden;
 }
 
-/* Scrollable containers inside the page (tables, lists, modals) should
-   bounce INSIDE their own scroll, not propagate to the page. This is
-   what makes the dashboard feel "fixed" — each section scrolls
-   independently instead of the whole page bouncing. */
-.overflow-x-auto,
+/* Scrollable containers: contain ONLY horizontal overscroll so vertical
+   scroll propagates to the parent. This fixes the "scroll doesn't work
+   on tables/cards" bug — vertical scroll over a table now scrolls the
+   page instead of dying on the table. */
+.overflow-x-auto {
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+}
 .overflow-y-auto,
 .overflow-auto {
   overscroll-behavior: contain;
 }
 
-/* Sidebar nav should not bounce either */
+/* Sidebar nav should contain its own scroll */
 nav {
   overscroll-behavior: contain;
 }

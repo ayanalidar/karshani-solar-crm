@@ -6,15 +6,19 @@ import { StatusPill } from "@/components/StatusPill";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [products, customers, enquiries, quotations, invoices, installations, amcContracts, expenses] = await Promise.all([
-    prisma.product.findMany(),
-    prisma.customer.findMany(),
-    prisma.enquiry.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-    prisma.quotation.findMany({ where: { status: "sent" } }),
-    prisma.invoice.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
-    prisma.installation.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-    prisma.amcContract.findMany(),
-    prisma.expense.findMany(),
+  // Optimized: use select to fetch only needed columns + take limits.
+  // This reduces Supabase egress + speeds up the dashboard.
+  const [products, customers, enquiries, quotations, invoices, installations, amcContracts] = await Promise.all([
+    prisma.product.findMany({ select: { id: true, name: true, category: true, unitPrice: true, stockQuantity: true } }),
+    prisma.customer.findMany({ select: { id: true } }),
+    prisma.enquiry.findMany({ orderBy: { createdAt: "desc" }, take: 5, select: { id: true, customerName: true, systemDescription: true, status: true } }),
+    prisma.quotation.findMany({ where: { status: "sent" }, select: { id: true, grandTotal: true } }),
+    prisma.invoice.findMany({
+      orderBy: { createdAt: "desc" },
+      select: { id: true, invoiceNo: true, customerName: true, grandTotal: true, invoiceDate: true, status: true, createdAt: true },
+    }),
+    prisma.installation.findMany({ orderBy: { createdAt: "desc" }, take: 5, select: { id: true, customerName: true, systemDescription: true, installDate: true, team: true, stage: true } }),
+    prisma.amcContract.findMany({ select: { id: true, customerName: true, system: true, expiryDate: true } }),
   ]);
 
   // Real analytics (D)
@@ -59,18 +63,6 @@ export default async function DashboardPage() {
     });
   }
   const maxMonth = Math.max(...months.map((m) => m.value), 1);
-
-  // Top products by total quoted value
-  const productTotals: Record<string, { name: string; total: number; qty: number }> = {};
-  for (const q of quotations) {
-    for (const item of (q as any).items || []) {
-      const key = item.itemName;
-      if (!productTotals[key]) productTotals[key] = { name: item.itemName, total: 0, qty: 0 };
-      productTotals[key].total += item.amount;
-      productTotals[key].qty += item.quantity;
-    }
-  }
-  const topProducts = Object.values(productTotals).sort((a, b) => b.total - a.total).slice(0, 5);
 
   return (
     <div>
@@ -181,27 +173,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Top products + Low stock + AMC expiry */}
-      <div className="grid gap-4 grid-cols-3 max-lg:grid-cols-1 mb-4">
-        <div className="bg-white border border-[#e6e0d4] rounded-xl p-5">
-          <h3 className="text-sm font-semibold mb-3">Top Products (by quoted value)</h3>
-          {topProducts.length === 0 ? (
-            <p className="text-xs text-[#787468] py-4 text-center">No quotations yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {topProducts.map((p, i) => (
-                <div key={i} className="flex justify-between items-center text-xs">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{p.name}</div>
-                    <div className="text-[10px] text-[#787468]">{p.qty} units quoted</div>
-                  </div>
-                  <div className="font-medium text-amber-700">{formatINR(p.total)}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
+      {/* Low stock + AMC expiry */}
+      <div className="grid gap-4 grid-cols-2 max-lg:grid-cols-1 mb-4">
         {/* Low stock widget (E) */}
         <div className="bg-white border border-[#e6e0d4] rounded-xl p-5">
           <div className="flex justify-between items-center mb-3">

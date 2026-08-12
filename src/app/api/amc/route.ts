@@ -6,7 +6,7 @@ import { todayISO } from "@/lib/format";
 export async function GET() {
   const unauth = await requireAuth();
   if (unauth) return unauth;
-  const contracts = await prisma.amcContract.findMany({ orderBy: { createdAt: "desc" } });
+  const contracts = await prisma.amcContract.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   return NextResponse.json(contracts);
 }
 
