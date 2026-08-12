@@ -1,11 +1,20 @@
-import { prisma } from "@/lib/db";
 import { UsersList } from "./UsersList";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function UsersPage() {
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
-  // Strip PIN before sending to client
-  const safeUsers = users.map((u) => ({ id: u.id, name: u.name, role: u.role, createdAt: u.createdAt }));
-  return <UsersList users={safeUsers} />;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
+  const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
+  const cookie = h.get("cookie") || "";
+
+  const res = await fetch(`${proto}://${host}/api/users`, {
+    headers: { cookie },
+    cache: "no-store",
+  });
+  const users = res.ok ? await res.json() : [];
+
+  return <UsersList users={users} />;
 }

@@ -1,32 +1,40 @@
-import { prisma } from "@/lib/db";
 import { CrudTable } from "@/components/CrudTable";
 import { MODULE_SLUGS } from "@/components/moduleSlugs";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-// Maps URL slug → Prisma model name
-const MODEL_BY_SLUG: Record<string, string> = {
-  enquiries: "enquiry",
-  suppliers: "supplierOrder",
-  expenses: "expense",
-  cashbook: "cashBookEntry",
-  installations: "installation",
-  amc: "amcContract",
-  employees: "employee",
+// Maps URL slug → API path
+const API_PATH_BY_SLUG: Record<string, string> = {
+  enquiries: "/api/enquiries",
+  suppliers: "/api/suppliers",
+  expenses: "/api/expenses",
+  cashbook: "/api/cashbook",
+  installations: "/api/installations",
+  amc: "/api/amc",
+  employees: "/api/employees",
 };
 
 export default async function ModulePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const modelName = MODEL_BY_SLUG[slug];
+  const apiPath = API_PATH_BY_SLUG[slug];
 
   let rows: Record<string, any>[] = [];
-  if (modelName) {
+  if (apiPath) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rows = await (prisma as any)[modelName].findMany({
-        orderBy: { createdAt: "desc" },
-        take: 100,
+      const h = await headers();
+      const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
+      const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
+      const cookie = h.get("cookie") || "";
+
+      const res = await fetch(`${proto}://${host}${apiPath}`, {
+        headers: { cookie },
+        cache: "no-store",
       });
+      if (res.ok) {
+        rows = await res.json();
+      }
     } catch {
       rows = [];
     }
