@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Pool } from "pg";
+import { requireAuth } from "@/lib/auth-check";
 
-// Diagnostics endpoint — returns env var status + DB connection test.
-// Safe to expose (no secrets leaked, only boolean + error messages).
+// Diagnostics endpoint — requires authentication.
+// Returns env var status + DB connection test (no secrets leaked).
 export async function GET() {
+  const unauth = await requireAuth();
+  if (unauth) return unauth;
   const hasDbUrl = Boolean(process.env.DATABASE_URL);
   const hasDirectUrl = Boolean(process.env.DIRECT_URL);
   const hasAuthSecret = Boolean(process.env.AUTH_SECRET);

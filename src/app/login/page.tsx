@@ -138,6 +138,17 @@ export default function LoginPage() {
         <p className="text-[9px] text-gray-400 dark:text-[#787468] mt-3 tracking-wider">
           Made &amp; Maintained By: GuardianX
         </p>
+
+        {/* DPDPA Compliance Badge */}
+        <div className="mt-3 pt-3 border-t border-[#e6e0d4] dark:border-[#2e2a25] flex items-center justify-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-green-600 dark:text-green-400">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+          <span className="text-[9px] text-gray-500 dark:text-[#787468]">
+            DPDPA Compliant · Data Protected Under Digital Personal Data Protection Act 2023
+          </span>
+        </div>
       </div>
     </div>
   );
